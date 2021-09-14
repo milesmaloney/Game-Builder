@@ -1,4 +1,4 @@
-import Character from './Character.js';
+var Character = require('./Character.js');
 
 /*
 Enemy attributes and their effects:
@@ -23,3 +23,5 @@ class Ally extends Character {
         this.type = 'ally';
     }
 }
+
+module.exports = Ally

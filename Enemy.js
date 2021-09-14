@@ -1,4 +1,5 @@
-import Character from './Character.js';
+var Character = require('./Character.js');
+
 
 /*
 Enemy attributes and their effects:
@@ -17,9 +18,11 @@ Enemy attributes and their effects:
     Status Effects: A list of status effects alongside their durations [[statusEffect, duration], [statusEffect, duration]]
     Type: specifies that this character is an enemy
 */
-export default class Enemy extends Character {
+class Enemy extends Character {
     constructor(name, abilities, strength, defense, wisdom, resilience, dexterity, evasion, maxHealth, currentHealth, luck, speed, statusEffects) {
         super(name, abilities, strength, defense, wisdom, resilience, dexterity, evasion, maxHealth, currentHealth, luck, speed, statusEffects);
         this.type = 'enemy'
     }
 }
+
+module.exports = Enemy

@@ -1,4 +1,4 @@
-import Character from './Character.js';
+var Character = require('./Character.js');
 
 /*
 Player attributes and their effects:
@@ -17,12 +17,15 @@ Player attributes and their effects:
     Status Effects: A list of status effects alongside their durations [[statusEffect, duration], [statusEffect, duration]]
     Type: specifies that this character is a player character
 */
-export default class Player extends Character {
+class Player extends Character {
     constructor(name, abilities, strength, defense, wisdom, resilience, dexterity, evasion, maxHealth, currentHealth, luck, speed, statusEffects) {
         super(name, abilities, strength, defense, wisdom, resilience, dexterity, evasion,maxHealth, currentHealth, luck, speed, statusEffects);
         this.type = 'player';
     }
 }
+
+module.exports = Player
+
 /*
 Many things need to be considered when taking a turn:
     Ability:

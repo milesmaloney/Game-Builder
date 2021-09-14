@@ -1,9 +1,9 @@
 const { all } = require('async');
-import StatusEffect from './StatusEffect.js';
-import Ability from './Ability.js';
-import Player from './Player.js';
-import Enemy from './Enemy.js';
-import Ally from './Ally.js';
+var StatusEffect = require('./StatusEffect.js');
+var Ability = require('./Ability.js');
+var Player = require('./Player.js');
+var Enemy = require('./Enemy.js');
+var Ally = require('./Ally.js');
 
 
 /*
@@ -356,20 +356,54 @@ Many things need to be considered when taking a turn:
         return -1;
     }
 
-
-    /*This function informs the user of any status effects on the character whose turn it is and return an array of indices of the status effects on the current target*/
+    
+    //This function takes a character and parses through its status effects array to return an array containing the effects of all status effects on the character
     statusEffectCheck(character) {
-        var statusEffectIndices = [];
+        var currStatusEffects = [0,0,0,0,0,0,0,0,[],[]];
+        //console.log(character.statusEffects);
         for(var i = 0; i < character.statusEffects.length; i++) {
-            for(var j = 0; j < this.statusEffects.length; j++) {
-                if(this.statusEffects[j].name === character.statusEffects[i].statusEffect.name) {
-                    console.log("You are " + this.statusEffects[j].name + "! " + this.statusEffects[j].effect + ". You will recover in " + character.statusEffects[i].duration + " turns.");
-                    statusEffectIndices.push(j);
+            //gets the status effect object based on the name of the status effect
+            var statusEffect = this.getStatusEffectByName(character.statusEffects[i][0]);
+            //console.log(statusEffect);
+            //Checks each status effect condition to consolidate effects
+            if(statusEffect.endsTurn) {
+                currStatusEffects[0] = 1;
+            }
+            else if(statusEffect.preventsMagicAttacks) {
+                currStatusEffects[1] = 1;
+            }
+            else if(statusEffect.preventsPhysicalAttacks) {
+                currStatusEffects[2] = 1;
+            }
+            else if(statusEffect.preventsIncomingHealing) {
+                currStatusEffects[3] = 1;
+            }
+            else if(statusEffect.preventsOutgoingHealing) {
+                currStatusEffects[4] = 1;
+            }
+            else if(statusEffect.magicAttackReduction !== 0) {
+                currStatusEffects[5] = statusEffect.magicAttackReduction;
+            }
+            else if(statusEffect.physicalAttackReduction !== 0) {
+                currStatusEffects[6] = statusEffect.physicalAttackReduction;
+            }
+            else if(statusEffect.damagePerRound !== 0)  {
+                currStatusEffects[7] = statusEffect.damagePerRound;
+            }
+            else if(statusEffect.statsReduced.length !== 0) {
+                for(var j = 0; j < statusEffect.statsReduced.length; j++) {
+                    console.log(statusEffect.statsReduced);
+                    console.log(statusEffect.percentReducedBy);
+                    currStatusEffects[8].push(statusEffect.statsReduced[j]);
+                    currStatusEffects[9].push(statusEffect.percentReducedBy[j]);
                 }
             }
+            //decrements duration of status effects
+            character.statusEffects[i][1]--;
         }
-        return statusEffectIndices;
-
+        //removes expired status effects
+        character.statusEffects = character.statusEffects.filter(item => item[1] > 0);
+        return currStatusEffects;
     }
 
 
@@ -392,8 +426,8 @@ Many things need to be considered when taking a turn:
     }
 
 
-    addStatusEffect(name, effect, endsTurn = false, preventsMagicAttacks = false, preventsPhysicalAttacks = false, preventsIncomingHealing = false, preventsOutgoingHealing = false, magicAttackReduction = 0, physicalAttackReduction = 0, damagePerRound = 0, statsReduced = [], percentReducedBy = []) {
-        this.statusEffects.push(new StatusEffect(name, effect, endsTurn, preventsMagicAttacks, preventsPhysicalAttacks, preventsIncomingHealing, preventsOutgoingHealing, magicAttackReduction, physicalAttackReduction, statsReduced, percentReducedBy, damagePerRound));
+    addStatusEffect(name, effect, endsTurn = 0, preventsMagicAttacks = 0, preventsPhysicalAttacks = 0, preventsIncomingHealing = 0, preventsOutgoingHealing = 0, magicAttackReduction = 0, physicalAttackReduction = 0, damagePerRound = 0, statsReduced = [], percentReducedBy = []) {
+        this.statusEffects.push(new StatusEffect(name, effect, endsTurn, preventsMagicAttacks, preventsPhysicalAttacks, preventsIncomingHealing, preventsOutgoingHealing, magicAttackReduction, physicalAttackReduction, damagePerRound, statsReduced, percentReducedBy));
     }
 
     addAbility(name, statusEffect, chance, duration, targetType, numTargets, accuracy, modifier, multiplier) {
@@ -412,28 +446,29 @@ Many things need to be considered when taking a turn:
 /*Creates a new empty game */
 var myGame = new Game([],[],[],[],[]);
 
+
 //Functional status effects
-myGame.addStatusEffect("stunned", "Stunned characters lose their turn", true );
-myGame.addStatusEffect("silenced", "Silenced characters cannot use magic on their turn", undefined, true);
-myGame.addStatusEffect("immobilized", "Immobilized characters cannot use physical attacks on their turn.", undefined, undefined, true);
-myGame.addStatusEffect("taunted", "Taunted characters will only use physical attacks on the character that taunted them", undefined, true);
-myGame.addStatusEffect("bleeding", "Bleeding characters will take damage at the end of each turn rotation", undefined, undefined, undefined, undefined, undefined, undefined, undefined, 1);
-myGame.addStatusEffect("hopeless", "Hopeless characters will refuse healing from allies", undefined, undefined, undefined, true);
-myGame.addStatusEffect("selfish", "Selfish characters will not cast any spells on their allies", undefined, undefined, undefined, undefined, true);
+myGame.addStatusEffect("stunned", "Stunned characters lose their turn", 1);
+myGame.addStatusEffect("silenced", "Silenced characters cannot use magic on their turn", 0, 1);
+myGame.addStatusEffect("immobilized", "Immobilized characters cannot use physical attacks on their turn.", 0, 0, 1);
+myGame.addStatusEffect("taunted", "Taunted characters will only use physical attacks on the character that taunted them", 0, 1);
+myGame.addStatusEffect("bleeding", "Bleeding characters will take damage at the end of each turn rotation", 0, 0, 0, 0, 0, 0, 0, 1);
+myGame.addStatusEffect("hopeless", "Hopeless characters will refuse healing from allies", 0, 0, 0, 1);
+myGame.addStatusEffect("selfish", "Selfish characters will not cast any spells on their allies", 0, 0, 0, 0, 1);
 
 //Damage reduction status effects
-myGame.addStatusEffect("disarmed", "Disarmed characters have their physical damage reduced by 25%", undefined, undefined, undefined, undefined, undefined, undefined, .25);
-myGame.addStatusEffect("unfocused", "Unfocused characters have their magic damage reduced by 25%", undefined, undefined, undefined, undefined, undefined, .25);
+myGame.addStatusEffect("disarmed", "Disarmed characters have their physical damage reduced by 25%", 0, 0, 0, 0, 0, 0, .25);
+myGame.addStatusEffect("unfocused", "Unfocused characters have their magic damage reduced by 25%", 0, 0, 0, 0, 0, .25);
 
 //Stat status effects
-myGame.addStatusEffect("weakened", "Weakened characters have their strength reduced by 50%", undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, ["strength"], [.50]);
-myGame.addStatusEffect("exposed", "Exposed characters have their defense reduced by 50%", undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, ["defense"], [.50]);
-myGame.addStatusEffect("confused", "Confused characters have their wisdom reduced by 50%", undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, ["wisdom"], [.50]);
-myGame.addStatusEffect("intimidated", "Intimidated characters have their resilience reduced by 50%", undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, ["resilience"], [.50]);
-myGame.addStatusEffect("dazed", "Dazed characters have their dexterity reduced by 50%", undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, ["dexterity"], [.50]);
-myGame.addStatusEffect("surrounded", "Surrounded characters have their evasion reduced by 50%", undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, ["evasion"], [.50]);
-myGame.addStatusEffect("cursed", "Cursed opponents have their luck reduced by 50%", undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, ["luck"], [.50]);
-myGame.addStatusEffect("slowed", "Slowed characters have their speed reduced by 50%", undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, ["speed"], [.50]);
+myGame.addStatusEffect("weakened", "Weakened characters have their strength reduced by 50%", 0, 0, 0, 0, 0, 0, 0, 0, ["strength"], [.50]);
+myGame.addStatusEffect("exposed", "Exposed characters have their defense reduced by 50%", 0, 0, 0, 0, 0, 0, 0, 0, ["defense"], [.50]);
+myGame.addStatusEffect("confused", "Confused characters have their wisdom reduced by 50%", 0, 0, 0, 0, 0, 0, 0, 0, ["wisdom"], [.50]);
+myGame.addStatusEffect("intimidated", "Intimidated characters have their resilience reduced by 50%", 0, 0, 0, 0, 0, 0, 0, 0, ["resilience"], [.50]);
+myGame.addStatusEffect("dazed", "Dazed characters have their dexterity reduced by 50%", 0, 0, 0, 0, 0, 0, 0, 0, ["dexterity"], [.50]);
+myGame.addStatusEffect("surrounded", "Surrounded characters have their evasion reduced by 50%", 0, 0, 0, 0, 0, 0, 0, 0, ["evasion"], [.50]);
+myGame.addStatusEffect("cursed", "Cursed opponents have their luck reduced by 50%", 0, 0, 0, 0, 0, 0, 0, 0, ["luck"], [.50]);
+myGame.addStatusEffect("slowed", "Slowed characters have their speed reduced by 50%", 0, 0, 0, 0, 0, 0, 0, 0, ["speed"], [.50]);
 
 //Base status effect (for abilities, not characters)
 myGame.addStatusEffect("none", "Abilities with no status effect behave as normal");
@@ -459,10 +494,8 @@ myGame.addAbility("Minor Arcane Beam", "none", 0, 0, "enemy", 1, 80, "wisdom", 1
 myGame.addAbility("Minor Arcane Barrage", "none", 0, 0, "enemy", 12, 70, "wisdom", 0.4);
 
 //Initialize Players
-myGame.addPlayer("Jonka", ["Sweep", "Slice", "Minor Group Heal", "Minor Arcana Barrage"], 3, 1, 5, 2, 3, 5, 12, 12, 2, 50, []);
+myGame.addPlayer("Jonka", ["Sweep", "Slice", "Minor Group Heal", "Minor Arcana Barrage"], 3, 1, 5, 2, 3, 5, 12, 12, 2, 50, [["stunned", 2], ["silenced", 4], ["slowed", 1], ["disarmed", 5]]);
 
 //Initialize Enemies
 myGame.addEnemy("Jonku", ["Punch","Minor Arcana Beam", "Slice", "Minor Heal"], 1, 1, 1, 1, 1, 1, 1, 1, 1, 36, []);
 myGame.addEnemy("Jonky", ["Minor Group Heal", "Minor Arcane Beam", "Sweep"], 14, -4, 0, 2, 1, 1, 8, 8, 2, 11, []);
-
-myGame.executeTurnLoop();

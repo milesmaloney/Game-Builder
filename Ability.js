@@ -9,7 +9,7 @@ Ability attributes and their effects:
     Modifier: The strength/magic modifier (either or) of the ability
     Multiplier: The percentage of the strength/magic stat the ability will use for damage
 */
-export default class Ability {
+class Ability {
     constructor(name, statusEffect, chance, duration, targetType, numTargets, accuracy, modifier, multiplier) {
         this.name = name;
         this.statusEffect = statusEffect;
@@ -22,3 +22,5 @@ export default class Ability {
         this.multiplier = multiplier;
     }
 }
+
+module.exports = Ability

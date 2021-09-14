@@ -32,3 +32,5 @@ class Character {
         this.statusEffects = statusEffects;
     }
 }
+
+module.exports = Character
