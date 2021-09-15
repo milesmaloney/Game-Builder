@@ -10,6 +10,15 @@ var Ally = require('./Ally.js');
 TODO: Work on getting negative values working, as well as check for status effects and mutate the turn based on those status effects
 */
 
+/*
+This class holds the many different elements of the game
+Attributes:
+    Players: The controlled player characters in the game
+    Enemies: The non-controlled enemy characters of the game
+    Allies: The non-controlled ally characters of the game
+    Abilities: The abilities available in the game
+    Status Effects: The status effects available in the game
+*/
 class Game {
     constructor(players, enemies, allies, abilities, statusEffects) {
         this.players = players;
@@ -20,22 +29,153 @@ class Game {
         this.gameOver = false;
     }
 
-/*
-Many things need to be considered when taking a turn:
-    Ability:
-        *The ability being used
-        *The type of target and number of targets the ability hits
-        *The status effect the ability inflicts
-        *The accuracy of the ability
-    Stats:
-        *The modifier (strength or magic) of the ability
-        *The multiplier of the ability
-        *The attacker's modifier value
-        *The defender's defense value for the modifier
-        *The attacker's dexterity
-        *The defender's evasion
-        *The attacker's luck
-*/        
+
+    /*
+    TODO: This function will play the game until a game over is reached
+    Parameters:
+        ?
+    Returns:
+        ?
+    */
+    playGame() {
+    }
+
+
+/*----------------------------------------------------------Turn Functions------------------------------------------------------------*/
+
+
+    /*
+    This function executes the turn loop, having each character take their turn based on the turn order
+    Parameters:
+        None; this function uses the attributes of the Game object as parameters
+    Returns:
+        None; the purpose of this function is to loop while the objects' attributes are changed
+    */
+    executeTurnLoop() {
+        const turnOrder = this.setTurnOrder();
+        for(var i = 0; i < turnOrder.length; i++) {
+            console.log(turnOrder[i].name);
+            var statusEffects = this.statusEffectCheck(turnOrder[i]);
+            console.log("status effect check done.");
+            if(statusEffects.length === 0) {
+                console.log("You had no status effects on you this turn. Take your turn.");
+            }
+            if(turnOrder[i].type === "player") {
+                console.log("turn starting...");
+                this.takePlayerTurn(turnOrder[i]);
+            }
+        }
+    }
+
+    /*
+    Sets the turn order based on character's speed multiplied by a random number between 0 and 1
+    Parameters:
+        None; this function uses the players, allies, and enemies arrays in the Game object to find the turn order
+    Returns:
+        Characters: An array of all of the characters in the game sorted by the character's speeds multiplied by a random number between 
+        0 and 1
+    */
+    setTurnOrder() {
+        var characters = this.players.concat(this.enemies);
+        characters.sort((a,b) => (a.speed * Math.random() < b.speed * Math.random()) ? 1 : -1);
+        return characters;
+    }
+    
+
+    /*
+    This function takes a character and parses through its status effects array to return an array containing the effects of all status 
+    effects currently on the character
+    Parameters:
+        Character: The character whose turn it is
+    Returns:
+        Current Status Effects: An array containing all of the conditions applied to the character by its status effects (a summation of
+        the status effects)
+    */
+    statusEffectCheck(character) {
+        var currStatusEffects = [0,0,0,0,0,0,0,0,[],[]];
+        //console.log(character.statusEffects);
+        for(var i = 0; i < character.statusEffects.length; i++) {
+            //gets the status effect object based on the name of the status effect
+            var statusEffect = this.getStatusEffectByName(character.statusEffects[i][0]);
+            //console.log(statusEffect);
+            //Checks each status effect condition to consolidate effects
+            if(statusEffect.endsTurn) {
+                currStatusEffects[0] = 1;
+            }
+            else if(statusEffect.preventsMagicAttacks) {
+                currStatusEffects[1] = 1;
+            }
+            else if(statusEffect.preventsPhysicalAttacks) {
+                currStatusEffects[2] = 1;
+            }
+            else if(statusEffect.preventsIncomingHealing) {
+                currStatusEffects[3] = 1;
+            }
+            else if(statusEffect.preventsOutgoingHealing) {
+                currStatusEffects[4] = 1;
+            }
+            else if(statusEffect.magicAttackReduction !== 0) {
+                currStatusEffects[5] = statusEffect.magicAttackReduction;
+            }
+            else if(statusEffect.physicalAttackReduction !== 0) {
+                currStatusEffects[6] = statusEffect.physicalAttackReduction;
+            }
+            else if(statusEffect.damagePerRound !== 0)  {
+                currStatusEffects[7] = statusEffect.damagePerRound;
+            }
+            else if(statusEffect.statsReduced.length !== 0) {
+                for(var j = 0; j < statusEffect.statsReduced.length; j++) {
+                    console.log(statusEffect.statsReduced);
+                    console.log(statusEffect.percentReducedBy);
+                    currStatusEffects[8].push(statusEffect.statsReduced[j]);
+                    currStatusEffects[9].push(statusEffect.percentReducedBy[j]);
+                }
+            }
+            //decrements duration of status effects
+            character.statusEffects[i][1]--;
+        }
+        //removes expired status effects
+        character.statusEffects = character.statusEffects.filter(item => item[1] > 0);
+        return currStatusEffects;
+    }
+
+
+    /*
+    This function executes the necessary prerequisites for the turn based on the status effects found.
+    Parameters:
+        Character: The character taking the turn
+        Status Effects: The array of status effects (length 10) with boolean values for the conditions applied by status effects or 
+        amount of stat/damage reduction
+    Returns:
+        Status Effect Changes: An array of status effects that impact the way the turn will actually function
+    */
+    statusEffectExecute(character, statusEffects) {
+
+    }
+
+
+
+    /*
+    This function will execute a turn from the player point of view
+    Parameters:
+        Player: The player character taking a turn, with relevant stats and abilities
+    Returns:
+        None; the function will execute relevant functions that will impact character stats and in turn affect the game
+    Many things need to be considered when taking a turn:
+        Ability:
+            *The ability being used
+            *The type of target and number of targets the ability hits
+            *The status effect the ability inflicts
+            *The accuracy of the ability
+        Stats:
+            *The modifier (strength or magic) of the ability
+            *The multiplier of the ability
+            *The attacker's modifier value
+            *The defender's defense value for the modifier
+            *The attacker's dexterity
+            *The defender's evasion
+            *The attacker's luck
+    */        
     takePlayerTurn(player) {
         console.log(player);
         const ability = this.promptForAbility(false, player);
@@ -69,75 +209,25 @@ Many things need to be considered when taking a turn:
                 this.healAlly(player, ally, ability);
             }
         }
+        /*General catch*/
         else {
             console.log("Invalid ability targetting type. Please try again or use a different ability.");
         }
     }
 
-    /*This function calculates whether or not the attack will hit*/
-    calculateHitOrMissDamage(player, enemy, ability) {
-        if(((ability.accuracy * player.dexterity) / enemy.evasion) * Math.random() < 0.30) {
-            console.log("Ability missed.");
-            return false;
-        }
-        else {
-            return true;
-        }
-    }
 
-    /*This function calculates whether or not a healing ability will hit*/
-    calculateHitOrMissHealing(player, ally, ability) {
-        if(((ability.accuracy * player.dexterity) / (ally.currentHealth / ally.maxHealth)) * Math.random() < 0.40) {
-            console.log("Ability missed.")
-            return false;
-        }
-        else {
-            return true;
-        }
-    }
+/*-------------------------------------------------------Action Functions--------------------------------------------------------------*/
+    
 
-    /*This function calculates whether or not a status effect will hit and applies it*/
-    calculateStatusEffect(ability) {
-        if(ability.statusEffect != "none") {
-            if(Math.random() < ability.chance) {
-                /*This means the status effect hits*/
-                console.log(String(ability.statusEffect) + " applied!");
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /*This function calculates the damage of an ability given the player, enemy, and ability*/
-    calculateDamage(player, enemy, ability) {
-        let damage;
-        if(ability.modifier === "strength") {
-            damage = (player.strength * ability.multiplier) / (enemy.defense * 0.1);
-        }
-        else if(ability.modifier === "magic") {
-            damage = (player.wisdom * ability.multiplier) / (enemy.resilience * 0.1);
-        }
-        else {
-            return 0;
-        }
-        return damage;
-    }
-
-    /*This function will calculate the healing done from a healing spell (function for later changes)*/
-    calculateHealing(player, ally, ability) {
-        return ((player.wisdom * ability.multiplier) / (ally.currentHealth / ally.maxHealth));
-    }
-
-    /*This function calculates whether or not an attack is a critical hit*/
-    calculateCrit(player, damage) {
-        if(player.luck * Math.random() > .8) {
-            console.log("Critical Hit!");
-            damage *= 2;
-        }
-        return damage;
-    }
-
-    /*This function carries out an attack on an enemy with an ability*/
+    /*
+    This function carries out an attack on an enemy with an ability
+    Parameters:
+        Player: The player that is attacking
+        Enemy: The enemy being attacked
+        Ability: The ability being used to attack
+    Returns:
+        None; removes damage from enemy's current health if the attack is successful
+    */
     attackEnemy(player, enemy, ability) {
         if(!this.calculateHitOrMissDamage(player, enemy, ability)) {
             return;
@@ -154,7 +244,15 @@ Many things need to be considered when taking a turn:
         enemy.currentHealth -= damage;
     }
 
-    /*This function carries out healing on an ally with an ability*/
+    /*
+    This function carries out healing on an ally with an ability
+    Parameters:
+        Player: The player that is healing
+        Ally: The ally receiving healing
+        Ability: The ability being used to heal
+    Returns:
+        None; the healing will be added to the ally's current health if successful
+    */
     healAlly(player, ally, ability) {
         if(!this.calculateHitOrMissHealing(player, ally, ability)) {
             return;
@@ -165,25 +263,17 @@ Many things need to be considered when taking a turn:
         ally.currentHealth += healing;
     }
 
-    /*This function will prompt the player for what ability they want to use*/
-    promptForAbility(reprompt, player) {
-        console.log(player.abilities);
-        var abilityToUse;
-        if(reprompt) {
-            abilityToUse = console.log("Your character doesn't know that move. Please try again.");
-        }
-        abilityToUse = this.getUserInput("Which ability would you like to use?");
-        const ability = this.getAbilityByName(abilityToUse);
-        if(ability != -1 && player.abilities.includes(abilityToUse)) {
-            return ability;
-        }
-        else {
-            this.promptForAbility(true, player);
-        }
-    }
+
+/*------------------------------------------------------Prompt Functions--------------------------------------------------------------*/
 
 
-    /*This function will prompt the player for which enemy (singular) they want to attack and return the enemy object*/
+    /*
+    This function will prompt the player for which enemy (singular) they want to attack and return the enemy object
+    Parameters:
+        Reprompt: A boolean value to determine whether or not the player has already failed the prompt
+    Returns:
+        Enemy: The enemy to be attacked
+    */
     promptForEnemy(reprompt) {
         console.log(this.getEnemies());
         if(reprompt) {
@@ -198,8 +288,16 @@ Many things need to be considered when taking a turn:
             return enemy;
         }
     }
+    
 
-    /*This function will prompt the player for which enemies they want to attack and return an array of enemy objects*/
+    /*
+    This function will prompt the player for which enemies they want to attack and return an array of enemy objects
+    Parameters:
+        Number of Enemies: The number of enemies that the ability will hit
+        Reprompt: A boolean value to determine whether the player has already failed the prompt
+    Returns:
+        Enemies to Attack: An array of enemies that an attack will hit
+    */
     promptForEnemies(numEnemies, reprompt) {
         console.log(this.getEnemies());
         let enemiesToAttack = [];
@@ -223,8 +321,15 @@ Many things need to be considered when taking a turn:
         }
         return enemiesToAttack;
     }
+    
 
-    /*This function will prompt the player for which ally they want to heal*/
+    /*
+    This function will prompt the player for which ally they want to heal
+    Parameters:
+        Reprompt: A boolean value to determine whether or not the player has already failed the prompt
+    Returns:
+        Ally: The ally to receive healing
+    */
     promptForAlly(reprompt) {
         console.log(this.getAllies());
         if(reprompt) {
@@ -239,8 +344,16 @@ Many things need to be considered when taking a turn:
             return ally;
         }
     }
+    
 
-    /*This function will prompt the player for which allies they want to heal*/
+    /*
+    This function will prompt the player for which allies they want to heal
+    Parameters:
+        Number of Allies: The number of allies that the player will attempt to heal
+        Reprompt: A boolean value to determine whether or not the player has failed the prompt
+    Returns:
+        Allies: An array of allies that the player will attempt to heal
+    */
     promptForAllies(numAllies, reprompt) {
         console.log(this.getAllies());
         let alliesToHeal = [];
@@ -265,7 +378,39 @@ Many things need to be considered when taking a turn:
         return alliesToHeal;
     }
 
-    /*This function allows for user input from the command line*/
+
+    /*
+    This function will prompt the player for what ability they want to use
+    Parameters:
+        Reprompt: A boolean value to determine whether the player has already failed the prompt
+        Player: The player that is taking its turn
+    Returns:
+        Ability: Returns the ability if the player has it and it is in the game; otherwise reprompts
+    */
+    promptForAbility(reprompt, player) {
+        console.log(player.abilities);
+        var abilityToUse;
+        if(reprompt) {
+            abilityToUse = console.log("Your character doesn't know that move. Please try again.");
+        }
+        abilityToUse = this.getUserInput("Which ability would you like to use?");
+        const ability = this.getAbilityByName(abilityToUse);
+        if(ability != -1 && player.abilities.includes(abilityToUse)) {
+            return ability;
+        }
+        else {
+            this.promptForAbility(true, player);
+        }
+    }
+
+
+    /*
+    This function allows for user input from the command line
+    Parameters:
+        Query: What the game wants to ask the user
+    Returns:
+        Response: The user's response to the query
+    */
     getUserInput(query) {
         const prompt = require('prompt-sync')({sigint: true});
         const response = prompt(query + "  ");
@@ -273,24 +418,129 @@ Many things need to be considered when taking a turn:
     }
 
 
-    playGame() {
+/*---------------------------------------------------Calculation Functions------------------------------------------------------------*/
+
+
+    /*
+    This function calculates whether or not the attack will hit
+    Parameters:
+        Player: The player who is attempting an attack
+        Enemy: The enemy receiving the attack
+        Ability: The ability being used
+    Returns:
+        Boolean: True if the attack hits, false if the attack misses
+    */
+    calculateHitOrMissDamage(player, enemy, ability) {
+        if(((ability.accuracy * player.dexterity) / enemy.evasion) * Math.random() < 0.30) {
+            console.log("Ability missed.");
+            return false;
+        }
+        else {
+            return true;
+        }
     }
 
 
-
-    /*Sets the turn order based on character's speed multiplied by a random number between 0 and 1 */
-    setTurnOrder() {
-        var characters = this.players.concat(this.enemies);
-        characters.sort((a,b) => (a.speed * Math.random() < b.speed * Math.random()) ? 1 : -1);
-        return characters;
+    /*
+    This function calculates whether or not a healing ability will hit
+    Parameters:
+        Player: The player who is attempting to heal an ally
+        Ally: The ally receiving the heal
+        Ability: The ability being used
+    Returns:
+        Boolean: True if the healing is received, false if the healing fails
+    */
+    calculateHitOrMissHealing(player, ally, ability) {
+        if(((ability.accuracy * player.dexterity) / (ally.currentHealth / ally.maxHealth)) * Math.random() < 0.40) {
+            console.log("Ability missed.")
+            return false;
+        }
+        else {
+            return true;
+        }
     }
 
 
-    /*Helper Functions*/
+    /*
+    This function calculates whether or not a status effect will hit
+    Parameters:
+        Ability: The ability being used (contains the chance of the status effect to hit)
+    Returns:
+        Boolean: True if the status effect is applied, or false if the status effect is not applied
+    */
+    calculateStatusEffect(ability) {
+        if(ability.statusEffect != "none") {
+            if(Math.random() < ability.chance) {
+                /*This means the status effect hits*/
+                console.log(String(ability.statusEffect) + " applied!");
+                return true;
+            }
+        }
+        return false;
+    }
+
+
+    /*
+    This function calculates the damage of an ability given the player, enemy, and ability
+    Parameters:
+        Player: The player that is dealing damage
+        Enemy: The enemy that is taking damage
+        Ability: The ability that is dealing damage
+    Returns:
+        Damage: A number denoting the amount of damage that is dealt
+    */
+    calculateDamage(player, enemy, ability) {
+        let damage;
+        if(ability.modifier === "strength") {
+            damage = (player.strength * ability.multiplier) / (enemy.defense * 0.1);
+        }
+        else if(ability.modifier === "magic") {
+            damage = (player.wisdom * ability.multiplier) / (enemy.resilience * 0.1);
+        }
+        else {
+            return 0;
+        }
+        return damage;
+    }
+
+
+    /*
+    This function will calculate the healing done from a healing spell (function for later changes)
+    Parameters:
+        Player: The player that is giving healing
+        Ally: The ally that is receiving healing
+        Ability: The ability that is being used
+    Returns:
+        Integer: Amount of healing given
+    */
+    calculateHealing(player, ally, ability) {
+        return ((player.wisdom * ability.multiplier) / (ally.currentHealth / ally.maxHealth));
+    }
+
+
+    /*
+    This function calculates whether or not an attack is a critical hit
+    Parameters:
+        Player: The player dealing damage
+        Damage: The damage being dealt
+    Returns:
+        Damage: The damage being dealt after calculating a crit
+    */
+    calculateCrit(player, damage) {
+        if(player.luck * Math.random() > .8) {
+            console.log("Critical Hit!");
+            damage *= 2;
+        }
+        return damage;
+    }
+
+
+/*-----------------------------------------------------Helper Functions---------------------------------------------------------------*/
+
+
     getPlayers() {
         return this.players;
     }
-
 
     getEnemies() {
         return this.enemies;
@@ -303,7 +553,6 @@ Many things need to be considered when taking a turn:
     getAbilities() {
         return this.abilities;
     }
-
 
     getStatusEffects() {
         return this.statusEffects;
@@ -354,75 +603,6 @@ Many things need to be considered when taking a turn:
             }
         }
         return -1;
-    }
-
-    
-    //This function takes a character and parses through its status effects array to return an array containing the effects of all status effects on the character
-    statusEffectCheck(character) {
-        var currStatusEffects = [0,0,0,0,0,0,0,0,[],[]];
-        //console.log(character.statusEffects);
-        for(var i = 0; i < character.statusEffects.length; i++) {
-            //gets the status effect object based on the name of the status effect
-            var statusEffect = this.getStatusEffectByName(character.statusEffects[i][0]);
-            //console.log(statusEffect);
-            //Checks each status effect condition to consolidate effects
-            if(statusEffect.endsTurn) {
-                currStatusEffects[0] = 1;
-            }
-            else if(statusEffect.preventsMagicAttacks) {
-                currStatusEffects[1] = 1;
-            }
-            else if(statusEffect.preventsPhysicalAttacks) {
-                currStatusEffects[2] = 1;
-            }
-            else if(statusEffect.preventsIncomingHealing) {
-                currStatusEffects[3] = 1;
-            }
-            else if(statusEffect.preventsOutgoingHealing) {
-                currStatusEffects[4] = 1;
-            }
-            else if(statusEffect.magicAttackReduction !== 0) {
-                currStatusEffects[5] = statusEffect.magicAttackReduction;
-            }
-            else if(statusEffect.physicalAttackReduction !== 0) {
-                currStatusEffects[6] = statusEffect.physicalAttackReduction;
-            }
-            else if(statusEffect.damagePerRound !== 0)  {
-                currStatusEffects[7] = statusEffect.damagePerRound;
-            }
-            else if(statusEffect.statsReduced.length !== 0) {
-                for(var j = 0; j < statusEffect.statsReduced.length; j++) {
-                    console.log(statusEffect.statsReduced);
-                    console.log(statusEffect.percentReducedBy);
-                    currStatusEffects[8].push(statusEffect.statsReduced[j]);
-                    currStatusEffects[9].push(statusEffect.percentReducedBy[j]);
-                }
-            }
-            //decrements duration of status effects
-            character.statusEffects[i][1]--;
-        }
-        //removes expired status effects
-        character.statusEffects = character.statusEffects.filter(item => item[1] > 0);
-        return currStatusEffects;
-    }
-
-
-/*Tentative turn loop*/
-    executeTurnLoop() {
-        const turnOrder = this.setTurnOrder();
-        for(var i = 0; i < turnOrder.length; i++) {
-            console.log(turnOrder[i].name);
-            var statusEffects = this.statusEffectCheck(turnOrder[i]);
-            console.log("status effect check done.");
-            if(statusEffects.length === 0) {
-                console.log("You had no status effects on you this turn. Take your turn.");
-            }
-            if(turnOrder[i].type === "player") {
-                console.log("turn starting...");
-                this.takePlayerTurn(turnOrder[i]);
-            }
-            
-        }
     }
 
 
@@ -499,3 +679,5 @@ myGame.addPlayer("Jonka", ["Sweep", "Slice", "Minor Group Heal", "Minor Arcana B
 //Initialize Enemies
 myGame.addEnemy("Jonku", ["Punch","Minor Arcana Beam", "Slice", "Minor Heal"], 1, 1, 1, 1, 1, 1, 1, 1, 1, 36, []);
 myGame.addEnemy("Jonky", ["Minor Group Heal", "Minor Arcane Beam", "Sweep"], 14, -4, 0, 2, 1, 1, 8, 8, 2, 11, []);
+
+myGame.executeTurnLoop();
