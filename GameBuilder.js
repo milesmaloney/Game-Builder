@@ -295,12 +295,12 @@ class Game {
     Parameters:
         Number of Enemies: The number of enemies that the ability will hit
         Reprompt: A boolean value to determine whether the player has already failed the prompt
+        Enemies To Attack: An array of enemies that the ability will hit (default value is empty; used for reprompting)
     Returns:
         Enemies to Attack: An array of enemies that an attack will hit
     */
-    promptForEnemies(numEnemies, reprompt) {
+    promptForEnemies(numEnemies, reprompt, enemiesToAttack = []) {
         console.log(this.getEnemies());
-        let enemiesToAttack = [];
         if(numEnemies >= this.enemies.length) {
             console.log("This attack will attempt to hit all enemies.");
             return this.enemies;
@@ -312,7 +312,7 @@ class Game {
             var enemyToAttack = this.getUserInput("Please select an enemy to attack. You can attack " + String(numEnemies) + " more enemies.");
             var enemy = this.getEnemyByName(enemyToAttack);
             if(enemy === -1) {
-                this.promptForEnemies(numEnemies, true);
+                this.promptForEnemies(numEnemies, true, enemiesToAttack);
             }
             else {
                 enemiesToAttack.push(enemy);
@@ -351,12 +351,12 @@ class Game {
     Parameters:
         Number of Allies: The number of allies that the player will attempt to heal
         Reprompt: A boolean value to determine whether or not the player has failed the prompt
+        Allies to Heal: An array of the allies that the ability will heal (default value = empty; used for reprompting)
     Returns:
         Allies: An array of allies that the player will attempt to heal
     */
-    promptForAllies(numAllies, reprompt) {
+    promptForAllies(numAllies, reprompt, alliesToHeal = []) {
         console.log(this.getAllies());
-        let alliesToHeal = [];
         if(numAllies >= this.enemies.length) {
             console.log("This spell will attempt to heal all allies.");
             return this.allies;
@@ -368,7 +368,7 @@ class Game {
             var allyToHeal = this.getUserInput("Please select an ally to heal. You can heal " + String(numAllies) + " more allies.");
             var ally = this.getEnemyByName(allyToHeal);
             if(ally === -1) {
-                this.promptForAllies(numAllies, true);
+                this.promptForAllies(numAllies, true, alliesToHeal);
             }
             else {
                 alliesToHeal.push(ally);

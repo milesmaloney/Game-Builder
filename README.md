@@ -4,8 +4,8 @@ This Game Builder is a customizable turn-based game creator that allows you to d
 
 
 Issues:
-    Prompting for multiple enemies/allies does not work as intended when a reprompt is required
     Stat changes do not have any timer related to them and they need some way to store the duration while the stats are reduced
+
 To-do:
     Create startgame function that defines the game over condition (all allies + players or enemies are dead) and runs the turn loop
     Create status effect execution function that executes the stat changes of a status effect
