@@ -36,6 +36,11 @@ class Game {
         ?
     */
     playGame() {
+        //Initialize all values that need to be initialized outside of the loop
+        //Execute the turn loop until the game is over
+        while(!this.gameOver) {
+            this.executeTurnLoop();
+        }
     }
 
 
@@ -50,17 +55,20 @@ class Game {
         None; the purpose of this function is to loop while the objects' attributes are changed
     */
     executeTurnLoop() {
+        if(this.enemies.length === 0 || this.players.length === 0) {
+            this.gameOver = 1;
+        }
         const turnOrder = this.setTurnOrder();
         for(var i = 0; i < turnOrder.length; i++) {
-            console.log(turnOrder[i].name);
+            //TEST: console.log(turnOrder[i].name);
             var statusEffects = this.statusEffectCheck(turnOrder[i]);
-            console.log("status effect check done.");
-            if(statusEffects.length === 0) {
-                console.log("You had no status effects on you this turn. Take your turn.");
+            //TEST: console.log("status effect check done.");
+            if(statusEffects[0]) {
+                continue;
             }
             if(turnOrder[i].type === "player") {
                 console.log("turn starting...");
-                this.takePlayerTurn(turnOrder[i]);
+                this.takePlayerTurn(turnOrder[i], statusEffects);
             }
         }
     }
@@ -90,43 +98,44 @@ class Game {
         the status effects)
     */
     statusEffectCheck(character) {
-        var currStatusEffects = [0, 0, 0, 0, 0, 0];
-        console.log("Current status effects: ");
+        var currStatusEffects = [0, 0, 0, 0, 0, 0, 0];
+        //TEST: console.log("Pre-check character stats:" + character.toString());
+        //TEST: console.log("Current status effects: ");
         for(var i = 0; i < character.statusEffects.length; i++) {
             //gets the status effect object based on the name of the status effect
             var statusEffect = this.getStatusEffectByName(character.statusEffects[i].statusEffect);
             //TEST: console.log(statusEffect);
-            //Checks whether the turn ends right away
+            //Stores whether the turn ends right away (still need to apply bleed damage, stat reductions, etc.)
             if(statusEffect.endsTurn) {
-                return 0;
+                currStatusEffects[0] = 1;
             }
             //Stores magic attack prevention for use in turn
             else if(statusEffect.preventsMagicAttacks) {
-                currStatusEffects[0] = 1;
+                currStatusEffects[1] = 1;
             }
             //Stores physical attack prevention for use in turn
             else if(statusEffect.preventsPhysicalAttacks) {
-                currStatusEffects[1] = 1;
+                currStatusEffects[2] = 1;
             }
             //Stores incoming healing prevention for use in turn
             else if(statusEffect.preventsIncomingHealing) {
-                currStatusEffects[2] = 1;
+                currStatusEffects[3] = 1;
             }
             //Stores outgoing healing prevention for use in turn
             else if(statusEffect.preventsOutgoingHealing) {
-                currStatusEffects[3] = 1;
+                currStatusEffects[4] = 1;
             }
             //Stores magic attack reduction for use in turn
             else if(statusEffect.magicAttackReduction !== 0) {
-                currStatusEffects[4] = statusEffect.magicAttackReduction;
+                currStatusEffects[5] = statusEffect.magicAttackReduction;
             }
             //Stores physical attack reduction for use in turn
             else if(statusEffect.physicalAttackReduction !== 0) {
-                currStatusEffects[5] = statusEffect.physicalAttackReduction;
+                currStatusEffects[6] = statusEffect.physicalAttackReduction;
             }
             //Damages the character based on the damage per round
             else if(statusEffect.damagePerRound !== 0)  {
-                character.currentHealth -= statusEffect.damagePerRound;
+                this.executeDamage(character, statusEffect.damagePerRound);
             }
             //Performs stat reductions or Reverts stats for expiring stat reductions
             else if(statusEffect.statsReduced.length !== 0) {
@@ -134,36 +143,19 @@ class Game {
                 for(var j = 0; j < statusEffect.statsReduced.length; j++) {
                     //Checks if the current status effect is ending and reverts stat reductions if it is
                     if(character.statusEffects[i].duration <= 1) {
-                        character.changeStat();
-                    }
-                    else {
-                        character.changeStat();
+                        character.changeStat(statusEffect.statsReduced[j].statReduced, 1.0 + statusEffect.statsReduced[j].reducedBy);
                     }
                 }
             }
-            console.log("\tStatus Effect: " + character.statusEffects[i].statusEffect.toString() + " Duration (before decrement): " + character.statusEffects[i].duration.toString());
+            //TEST: console.log("\tStatus Effect: " + character.statusEffects[i].statusEffect.toString() + " Duration (before decrement): " + character.statusEffects[i].duration.toString());
             //decrements duration of status effects
             character.statusEffects[i].duration--;
         }
         //removes expired status effects
         character.statusEffects = character.statusEffects.filter(item => item.duration > 0);
+        //TEST: console.log("Post-check character stats:" + character.toString());
         return currStatusEffects;
     }
-
-
-    /*
-    This function executes the necessary prerequisites for the turn based on the status effects found.
-    Parameters:
-        Character: The character taking the turn
-        Status Effects: The array of status effects (length 10) with boolean values for the conditions applied by status effects or 
-        amount of stat/damage reduction
-    Returns:
-        Status Effect Changes: An array of status effects that impact the way the turn will actually function
-    */
-    statusEffectExecute(character, statusEffects) {
-
-    }
-
 
 
     /*
@@ -187,9 +179,9 @@ class Game {
             *The defender's evasion
             *The attacker's luck
     */        
-    takePlayerTurn(player) {
-        console.log(player);
-        const ability = this.promptForAbility(false, player);
+    takePlayerTurn(player, statusEffects) {
+        //TEST: console.log(player);
+        const ability = this.promptForAbility(0, player, statusEffects);
         /*Attacking an Enemy*/
         if(ability.targetType === 'enemy') {
             /*Multiple Targets*/
@@ -246,13 +238,14 @@ class Game {
         /*Ability + Enemy + Hit successfully received*/
         if(this.calculateStatusEffect(ability)) {
             enemy.statusEffects.push({ statusEffect: ability.statusEffect, duration: ability.duration });
+            enemy.reduceStatsByStatusEffect(this.getStatusEffectByName(ability.statusEffect));
         }
         /*Ability + Enemy + Hit + Status Effect successfully received*/
         var damage = this.calculateDamage(player, enemy, ability);
         /*Ability + Enemy + Hit + Status Effect + Damage successfully received*/
         damage = this.calculateCrit(player, damage);
         console.log("You hit " + enemy.name + " for " + String(damage) + " damage!");
-        enemy.currentHealth -= damage;
+        this.executeDamage(enemy, damage);
     }
 
     /*
@@ -272,6 +265,31 @@ class Game {
         healing = this.calculateCrit(player, healing);
         console.log("You healed " + ally.name + " for " + String(healing) + "health!");
         ally.currentHealth += healing;
+    }
+
+
+    /*
+    This function will carry out damage on an enemy and determine if they are dead
+    Parameters:
+        Character: The character taking damage
+        Damage: The damage dealt to the character
+    Returns:
+        None; The function will modify the character's health attribute and remove the character from the relevant array if they have 
+        died.
+    */
+    executeDamage(character, damage) {
+        character.currentHealth = character.currentHealth - damage;
+        //TODO: Character is dead
+        if(character.currentHealth <= 0) {
+            switch(character.type) {
+                case player:
+                    break;
+                case enemy:
+                    break;
+                case ally:
+                    break;
+            }
+        }
     }
 
 
@@ -398,19 +416,41 @@ class Game {
     Returns:
         Ability: Returns the ability if the player has it and it is in the game; otherwise reprompts
     */
-    promptForAbility(reprompt, player) {
+    promptForAbility(reprompt, player, statusEffects) {
         console.log(player.abilities);
         var abilityToUse;
-        if(reprompt) {
-            abilityToUse = console.log("Your character doesn't know that move. Please try again.");
+        switch(reprompt) {
+            case 1:
+                console.log("Your character doesn't know that move. Please try again.");
+                break;
+            case 2:
+                console.log("Your character cannot use physical attacks on this turn. Please try again.");
+                break;
+            case 3:
+                console.log("Your character cannot use magic attacks on this turn. Please try again.");
+                break;
+            case 4:
+                console.log("Your character cannot use healing abilities on this turn. Please try again.");
+                break;
+            default:
+                break;
         }
         abilityToUse = this.getUserInput("Which ability would you like to use?");
         const ability = this.getAbilityByName(abilityToUse);
-        if(ability != -1 && player.abilities.includes(abilityToUse)) {
+        if(ability.modifier === 'strength' && statusEffects[1]) {
+            this.promptForAbility(2, player);
+        }
+        else if(ability.modifier === 'wisdom' && statusEffects[2]) {
+            this.promptForAbility(3, player);
+        }
+        else if(ability.targetType === 'ally' && statusEffects[3]) {
+            this.promptForAbility(4, player);
+        }
+        else if(ability != -1 && player.abilities.includes(abilityToUse)) {
             return ability;
         }
         else {
-            this.promptForAbility(true, player);
+            this.promptForAbility(1, player);
         }
     }
 
@@ -626,11 +666,19 @@ class Game {
     }
 
     addPlayer(name, abilities, strength, defense, wisdom, resilience, dexterity, evasion, maxHealth, currentHealth, luck, speed, statusEffects) {
-        this.players.push(new Player(name, abilities, strength, defense, wisdom, resilience, dexterity, evasion, maxHealth, currentHealth, luck, speed, statusEffects));
+        var player = new Player(name, abilities, strength, defense, wisdom, resilience, dexterity, evasion, maxHealth, currentHealth, luck, speed, statusEffects);
+        for(var i = 0; i < statusEffects.length; i++) {
+            player.reduceStatsByStatusEffect(this.getStatusEffectByName(statusEffects[i].statusEffect));
+        }
+        this.players.push(player);
     }
 
     addEnemy(name, abilities, strength, defense, wisdom, resilience, dexterity, evasion, maxHealth, currentHealth, luck, speed, statusEffects) {
-        this.enemies.push(new Enemy(name, abilities, strength, defense, wisdom, resilience, dexterity, evasion, maxHealth, currentHealth, luck, speed, statusEffects));
+        var enemy = new Enemy(name, abilities, strength, defense, wisdom, resilience, dexterity, evasion, maxHealth, currentHealth, luck, speed, statusEffects);
+        for(var i = 0; i < statusEffects.length; i++) {
+            enemy.reduceStatsByStatusEffect(this.getStatusEffectByName(statusEffects[i].statusEffect));
+        }
+        this.enemies.push(enemy);
     }
 }
 
@@ -652,14 +700,14 @@ myGame.addStatusEffect("disarmed", "Disarmed characters have their physical dama
 myGame.addStatusEffect("unfocused", "Unfocused characters have their magic damage reduced by 25%", 0, 0, 0, 0, 0, .25);
 
 //Stat status effects
-myGame.addStatusEffect("weakened", "Weakened characters have their strength reduced by 50%", 0, 0, 0, 0, 0, 0, 0, 0, ["strength"], [.50]);
-myGame.addStatusEffect("exposed", "Exposed characters have their defense reduced by 50%", 0, 0, 0, 0, 0, 0, 0, 0, ["defense"], [.50]);
-myGame.addStatusEffect("confused", "Confused characters have their wisdom reduced by 50%", 0, 0, 0, 0, 0, 0, 0, 0, ["wisdom"], [.50]);
-myGame.addStatusEffect("intimidated", "Intimidated characters have their resilience reduced by 50%", 0, 0, 0, 0, 0, 0, 0, 0, ["resilience"], [.50]);
-myGame.addStatusEffect("dazed", "Dazed characters have their dexterity reduced by 50%", 0, 0, 0, 0, 0, 0, 0, 0, ["dexterity"], [.50]);
-myGame.addStatusEffect("surrounded", "Surrounded characters have their evasion reduced by 50%", 0, 0, 0, 0, 0, 0, 0, 0, ["evasion"], [.50]);
-myGame.addStatusEffect("cursed", "Cursed opponents have their luck reduced by 50%", 0, 0, 0, 0, 0, 0, 0, 0, ["luck"], [.50]);
-myGame.addStatusEffect("slowed", "Slowed characters have their speed reduced by 50%", 0, 0, 0, 0, 0, 0, 0, 0, ["speed"], [.50]);
+myGame.addStatusEffect("weakened", "Weakened characters have their strength reduced by 50%", 0, 0, 0, 0, 0, 0, 0, 0, [{ statReduced: "strength", reducedBy: .50 }]);
+myGame.addStatusEffect("exposed", "Exposed characters have their defense reduced by 50%", 0, 0, 0, 0, 0, 0, 0, 0, [{ statReduced: "defense", reducedBy: .50 }]);
+myGame.addStatusEffect("confused", "Confused characters have their wisdom reduced by 50%", 0, 0, 0, 0, 0, 0, 0, 0, [{ statReduced: "wisdom", reducedBy: .50 }]);
+myGame.addStatusEffect("intimidated", "Intimidated characters have their resilience reduced by 50%", 0, 0, 0, 0, 0, 0, 0, 0, [{ statReduced: "resilience", reducedBy: .50 }]);
+myGame.addStatusEffect("dazed", "Dazed characters have their dexterity reduced by 50%", 0, 0, 0, 0, 0, 0, 0, 0, [{ statReduced: "dexterity", reducedBy: .50 }]);
+myGame.addStatusEffect("surrounded", "Surrounded characters have their evasion reduced by 50%", 0, 0, 0, 0, 0, 0, 0, 0, [{ statReduced: "evasion", reducedBy: .50 }]);
+myGame.addStatusEffect("cursed", "Cursed opponents have their luck reduced by 50%", 0, 0, 0, 0, 0, 0, 0, 0, [{ statReduced: "luck", reducedBy: .50 }]);
+myGame.addStatusEffect("slowed", "Slowed characters have their speed reduced by 50%", 0, 0, 0, 0, 0, 0, 0, 0, [{ statReduced: "speed", reducedBy: .50 }]);
 
 //Base status effect (for abilities, not characters)
 myGame.addStatusEffect("none", "Abilities with no status effect behave as normal");
@@ -685,7 +733,7 @@ myGame.addAbility("Minor Arcane Beam", "none", 0, 0, "enemy", 1, 80, "wisdom", 1
 myGame.addAbility("Minor Arcane Barrage", "none", 0, 0, "enemy", 12, 70, "wisdom", 0.4);
 
 //Initialize Players
-myGame.addPlayer("Jonka", ["Sweep", "Slice", "Minor Group Heal", "Minor Arcana Barrage"], 3, 1, 5, 2, 3, 5, 12, 12, 2, 50, [{ statusEffect: "stunned", duration: 2 }, { statusEffect: "silenced", duration: 4 }, { statusEffect: "slowed", duration: 1 }, { statusEffect: "disarmed", duration: 5 }]);
+myGame.addPlayer("Jonka", ["Sweep", "Slice", "Minor Group Heal", "Minor Arcana Barrage"], 3, 1, 5, 2, 3, 5, 12, 12, 2, 50, [{ statusEffect: "stunned", duration: 3 }, { statusEffect: "silenced", duration: 4 }, { statusEffect: "slowed", duration: 2 }, { statusEffect: "disarmed", duration: 5 }]);
 
 //Initialize Enemies
 myGame.addEnemy("Jonku", ["Punch","Minor Arcana Beam", "Slice", "Minor Heal"], 1, 1, 1, 1, 1, 1, 1, 1, 1, 36, []);

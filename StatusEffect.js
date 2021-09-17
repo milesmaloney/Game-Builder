@@ -11,8 +11,8 @@ Status effect attributes and their effects:
     magicAttackReduction: A percentage by which the damage of magic attacks of the affected character is reduced
     physicalAttackReduction: A percentage by which the damage of physical attacks of the affected character is reduced
     damagePerRound: The amount of damage the affected character takes on the start of their turn each round
-    statsReduced: An array of strings that denotes the stats that are to be reduced.
-    percentReducedBy: An array of percentage values (indices should line up with statsReduced) denoting how much each stat is reduced by
+    statsReduced: An array of objects that denotes the stats that are to be reduced and the amount they are reduced by 
+    ({statReduced, reducedBy})
 NOTE: Status effects need to be handled on a per-game basis using conditionals
 */
 class StatusEffect {
@@ -28,7 +28,6 @@ class StatusEffect {
         this.physicalAttackReduction = physicalAttackReduction;
         this.damagePerRound = damagePerRound;
         this.statsReduced = statsReduced;
-        this.percentReducedBy = percentReducedBy;
     }
 }
 
