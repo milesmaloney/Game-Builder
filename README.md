@@ -8,6 +8,7 @@ Issues:
 
 To-do:
     Refactoring: Create object for reduced stats to replace the index dependency for statsReduced + percentReducedBy
+    Update turn execution to include the stored values of status effect conditions
     Work on getting negative values working, as well as check for status effects and mutate the turn based on those status effects
     Create startgame function that defines the game over condition (all allies + players or enemies are dead) and runs the turn loop
     Create status effect execution function that executes the stat changes of a status effect
