@@ -7,7 +7,9 @@ Issues:
     Stat changes do not have any timer related to them and they need some way to store the duration while the stats are reduced
 
 To-do:
-    Refactoring: Create objects ({subproperty: value}) for object attributes that are currently better suited as objects (e.g. statsReduced)
+    Create functionality for what happens when a character dies
+    Find solution to include blocked incoming healing
+    Work on getting negative values working, as well as check for status effects and mutate the turn based on those status effects
     Create startgame function that defines the game over condition (all allies + players or enemies are dead) and runs the turn loop
     Create status effect execution function that executes the stat changes of a status effect
     Negative stat values currently will return negative values for most calculations, but I eventually want them to function similarly to positive values and return for example, positive damage when an enemy has negative armor.
