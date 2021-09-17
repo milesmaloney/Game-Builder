@@ -6,9 +6,7 @@ var Enemy = require('./Enemy.js');
 var Ally = require('./Ally.js');
 
 
-/*
-TODO: Work on getting negative values working, as well as check for status effects and mutate the turn based on those status effects
-*/
+
 
 /*
 This class holds the many different elements of the game
@@ -83,8 +81,8 @@ class Game {
     
 
     /*
-    This function takes a character and parses through its status effects array to return an array containing the effects of all status 
-    effects currently on the character
+    This function takes a character and parses through its status effects array and executes the status effects accordingly & returns an
+    array of values denoting the 6 status effects that need to be dealt with in turn
     Parameters:
         Character: The character whose turn it is
     Returns:
@@ -92,50 +90,63 @@ class Game {
         the status effects)
     */
     statusEffectCheck(character) {
-        var currStatusEffects = [0,0,0,0,0,0,0,0,[],[]];
-        //console.log(character.statusEffects);
+        var currStatusEffects = [0, 0, 0, 0, 0, 0];
+        console.log("Current status effects: ");
         for(var i = 0; i < character.statusEffects.length; i++) {
             //gets the status effect object based on the name of the status effect
-            var statusEffect = this.getStatusEffectByName(character.statusEffects[i][0]);
-            //console.log(statusEffect);
-            //Checks each status effect condition to consolidate effects
+            var statusEffect = this.getStatusEffectByName(character.statusEffects[i].statusEffect);
+            //TEST: console.log(statusEffect);
+            //Checks whether the turn ends right away
             if(statusEffect.endsTurn) {
+                return 0;
+            }
+            //Stores magic attack prevention for use in turn
+            else if(statusEffect.preventsMagicAttacks) {
                 currStatusEffects[0] = 1;
             }
-            else if(statusEffect.preventsMagicAttacks) {
+            //Stores physical attack prevention for use in turn
+            else if(statusEffect.preventsPhysicalAttacks) {
                 currStatusEffects[1] = 1;
             }
-            else if(statusEffect.preventsPhysicalAttacks) {
+            //Stores incoming healing prevention for use in turn
+            else if(statusEffect.preventsIncomingHealing) {
                 currStatusEffects[2] = 1;
             }
-            else if(statusEffect.preventsIncomingHealing) {
+            //Stores outgoing healing prevention for use in turn
+            else if(statusEffect.preventsOutgoingHealing) {
                 currStatusEffects[3] = 1;
             }
-            else if(statusEffect.preventsOutgoingHealing) {
-                currStatusEffects[4] = 1;
-            }
+            //Stores magic attack reduction for use in turn
             else if(statusEffect.magicAttackReduction !== 0) {
-                currStatusEffects[5] = statusEffect.magicAttackReduction;
+                currStatusEffects[4] = statusEffect.magicAttackReduction;
             }
+            //Stores physical attack reduction for use in turn
             else if(statusEffect.physicalAttackReduction !== 0) {
-                currStatusEffects[6] = statusEffect.physicalAttackReduction;
+                currStatusEffects[5] = statusEffect.physicalAttackReduction;
             }
+            //Damages the character based on the damage per round
             else if(statusEffect.damagePerRound !== 0)  {
-                currStatusEffects[7] = statusEffect.damagePerRound;
+                character.currentHealth -= statusEffect.damagePerRound;
             }
+            //Performs stat reductions or Reverts stats for expiring stat reductions
             else if(statusEffect.statsReduced.length !== 0) {
+                //Loops through the stats reduced by the current status effect
                 for(var j = 0; j < statusEffect.statsReduced.length; j++) {
-                    console.log(statusEffect.statsReduced);
-                    console.log(statusEffect.percentReducedBy);
-                    currStatusEffects[8].push(statusEffect.statsReduced[j]);
-                    currStatusEffects[9].push(statusEffect.percentReducedBy[j]);
+                    //Checks if the current status effect is ending and reverts stat reductions if it is
+                    if(character.statusEffects[i].duration <= 1) {
+                        character.changeStat();
+                    }
+                    else {
+                        character.changeStat();
+                    }
                 }
             }
+            console.log("\tStatus Effect: " + character.statusEffects[i].statusEffect.toString() + " Duration (before decrement): " + character.statusEffects[i].duration.toString());
             //decrements duration of status effects
-            character.statusEffects[i][1]--;
+            character.statusEffects[i].duration--;
         }
         //removes expired status effects
-        character.statusEffects = character.statusEffects.filter(item => item[1] > 0);
+        character.statusEffects = character.statusEffects.filter(item => item.duration > 0);
         return currStatusEffects;
     }
 
@@ -674,10 +685,12 @@ myGame.addAbility("Minor Arcane Beam", "none", 0, 0, "enemy", 1, 80, "wisdom", 1
 myGame.addAbility("Minor Arcane Barrage", "none", 0, 0, "enemy", 12, 70, "wisdom", 0.4);
 
 //Initialize Players
-myGame.addPlayer("Jonka", ["Sweep", "Slice", "Minor Group Heal", "Minor Arcana Barrage"], 3, 1, 5, 2, 3, 5, 12, 12, 2, 50, [["stunned", 2], ["silenced", 4], ["slowed", 1], ["disarmed", 5]]);
+myGame.addPlayer("Jonka", ["Sweep", "Slice", "Minor Group Heal", "Minor Arcana Barrage"], 3, 1, 5, 2, 3, 5, 12, 12, 2, 50, [{ statusEffect: "stunned", duration: 2 }, { statusEffect: "silenced", duration: 4 }, { statusEffect: "slowed", duration: 1 }, { statusEffect: "disarmed", duration: 5 }]);
 
 //Initialize Enemies
 myGame.addEnemy("Jonku", ["Punch","Minor Arcana Beam", "Slice", "Minor Heal"], 1, 1, 1, 1, 1, 1, 1, 1, 1, 36, []);
 myGame.addEnemy("Jonky", ["Minor Group Heal", "Minor Arcane Beam", "Sweep"], 14, -4, 0, 2, 1, 1, 8, 8, 2, 11, []);
 
-myGame.executeTurnLoop();
+for(var i = 0; i < 5; i++) {
+    console.log(myGame.statusEffectCheck(myGame.getPlayerByName("Jonka")));
+}

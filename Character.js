@@ -31,6 +31,31 @@ class Character {
         this.speed = speed;
         this.statusEffects = statusEffects;
     }
+
+    changeStat(stat, change) {
+        switch(stat) {
+            case 'strength':
+                this.strength = this.strength * change;
+            case 'defense':
+                this.defense = this.defense * change;
+            case 'wisdom':
+                this.wisdom = this.wisdom * change;
+            case 'resilience':
+                this.resilience = this.resilience * change;
+            case 'dexterity':
+                this.dexterity = this.dexterity * change;
+            case 'evasion':
+                this.evasion = this.evasion * change;
+            case 'maxHealth':
+                this.maxHealth = this.maxHealth * change;
+            case 'currentHealth':
+                this.currentHealth = this.currentHealth * change;
+            case 'luck':
+                this.luck = this.luck * change;
+            case 'speed':
+                this.speed = this.speed * change;
+        }
+    }
 }
 
 module.exports = Character
