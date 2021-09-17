@@ -424,7 +424,7 @@ class Game {
                 console.log("Your character doesn't know that move. Please try again.");
                 break;
             case 2:
-                console.log("Your character cannot use physical attacks on this turn. Please try again.");
+                console.log("Your character cannot use magic attacks on this turn. Please try again.");
                 break;
             case 3:
                 console.log("Your character cannot use magic attacks on this turn. Please try again.");
@@ -437,10 +437,10 @@ class Game {
         }
         abilityToUse = this.getUserInput("Which ability would you like to use?");
         const ability = this.getAbilityByName(abilityToUse);
-        if(ability.modifier === 'strength' && statusEffects[1]) {
+        if(ability.modifier === 'wisdom' && statusEffects[1]) {
             this.promptForAbility(2, player);
         }
-        else if(ability.modifier === 'wisdom' && statusEffects[2]) {
+        else if(ability.modifier === 'strength' && statusEffects[2]) {
             this.promptForAbility(3, player);
         }
         else if(ability.targetType === 'ally' && statusEffects[3]) {
