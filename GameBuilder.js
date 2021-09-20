@@ -24,7 +24,7 @@ class Game {
         this.allies = allies;
         this.abilities = abilities;
         this.statusEffects = statusEffects;
-        this.gameOver = false;
+        this.gameOver = 0;
     }
 
 
@@ -67,7 +67,7 @@ class Game {
                 continue;
             }
             if(turnOrder[i].type === "player") {
-                console.log("turn starting...");
+                this.messageUser(turnOrder[i].name + "'s turn starting...");
                 this.takePlayerTurn(turnOrder[i], statusEffects);
             }
         }
@@ -186,14 +186,14 @@ class Game {
         if(ability.targetType === 'enemy') {
             /*Multiple Targets*/
             if(ability.numTargets > 1) {
-                const enemies = this.promptForEnemies(ability.numTargets, false);
+                const enemies = this.promptForEnemies(ability.numTargets, 0);
                 for(var i = 0; i < enemies.length; i++) {
                     this.attackEnemy(player, enemies[i], ability);
                 }
             }
             /*Single Target*/
             else {
-                const enemy = this.promptForEnemy(false);
+                const enemy = this.promptForEnemy(0);
                 this.attackEnemy(player, enemy, ability);
             }
         }
@@ -201,20 +201,20 @@ class Game {
         else if(ability.targetType === 'ally') {
             /*Multiple Targets*/
             if(ability.numTargets > 1) {
-                const allies = this.promptForAllies(ability.numTargets, false);
+                const allies = this.promptForAllies(ability.numTargets, 0);
                 for(var i = 0; i < allies.length; i++) {
                     this.healAlly(player, allies[i], ability);
                 }
             }
             /*Single Target*/
             else {
-                const ally = this.promptForAlly(false);
+                const ally = this.promptForAlly(0);
                 this.healAlly(player, ally, ability);
             }
         }
         /*General catch*/
         else {
-            console.log("Invalid ability targetting type. Please try again or use a different ability.");
+            this.messageUser("Invalid ability targetting type. Please try again or use a different ability.");
         }
     }
 
@@ -244,7 +244,7 @@ class Game {
         var damage = this.calculateDamage(player, enemy, ability);
         /*Ability + Enemy + Hit + Status Effect + Damage successfully received*/
         damage = this.calculateCrit(player, damage);
-        console.log("You hit " + enemy.name + " for " + String(damage) + " damage!");
+        this.messageUser("You hit " + enemy.name + " for " + String(damage) + " damage!");
         this.executeDamage(enemy, damage);
     }
 
@@ -263,7 +263,7 @@ class Game {
         }
         var healing = this.calculateHealing()
         healing = this.calculateCrit(player, healing);
-        console.log("You healed " + ally.name + " for " + String(healing) + "health!");
+        this.messageUser("You healed " + ally.name + " for " + String(healing) + "health!");
         ally.currentHealth += healing;
     }
 
@@ -304,14 +304,14 @@ class Game {
         Enemy: The enemy to be attacked
     */
     promptForEnemy(reprompt) {
-        console.log(this.getEnemies());
+        this.messageUser(this.getEnemies());
         if(reprompt) {
-            console.log("Your character doesn't see that enemy anywhere! Please try again.");
+            this.messageUser("Your character doesn't see that enemy anywhere! Please try again.");
         }
         var enemyToAttack = this.getUserInput("Which enemy would you like to attack?");
         var enemy = this.getEnemyByName(enemyToAttack);
         if(enemy === -1) {
-            this.promptForEnemy(true);
+            this.promptForEnemy(1);
         }
         else {
             return enemy;
@@ -329,19 +329,19 @@ class Game {
         Enemies to Attack: An array of enemies that an attack will hit
     */
     promptForEnemies(numEnemies, reprompt, enemiesToAttack = []) {
-        console.log(this.getEnemies());
+        this.messageUser(this.getEnemies());
         if(numEnemies >= this.enemies.length) {
-            console.log("This attack will attempt to hit all enemies.");
+            this.messageUser("This attack will attempt to hit all enemies.");
             return this.enemies;
         }
-        if(reprompt === true) {
-            console.log("Your character cannot find that enemy anywhere. Please try again.");
+        if(reprompt) {
+            this.messageUser("Your character cannot find that enemy anywhere. Please try again.");
         }
         while(numEnemies > 0) {
             var enemyToAttack = this.getUserInput("Please select an enemy to attack. You can attack " + String(numEnemies) + " more enemies.");
             var enemy = this.getEnemyByName(enemyToAttack);
             if(enemy === -1) {
-                this.promptForEnemies(numEnemies, true, enemiesToAttack);
+                this.promptForEnemies(numEnemies, 1, enemiesToAttack);
             }
             else {
                 enemiesToAttack.push(enemy);
@@ -360,18 +360,29 @@ class Game {
         Ally: The ally to receive healing
     */
     promptForAlly(reprompt) {
-        console.log(this.getAllies());
-        if(reprompt) {
-            console.log("Your character couldn't see that ally. Please try again.")
+        this.messageUser(this.getAllies());
+        switch(reprompt) {
+            case 1:
+                this.messageUser("Your character couldn't see that ally. Please try again.");
+                break;
+            case 2:
+                this.messageUser("The selected ally cannot be healed.");
+                break;
+            default:
+                break;
         }
         var allyToHeal = this.getUserInput("Which ally would you like to heal?");
         var ally = this.getAllyByName(allyToHeal);
         if(ally === -1) {
-            this.promptForAlly(true);
+            return this.promptForAlly(1);
         }
-        else {
-            return ally;
+        for(var i = 0; i < ally.statusEffects.length; i++) {
+            if(this.getStatusEffectByName(ally.statusEffects[i].statusEffect).preventsIncomingHealing) {
+                return this.promptForAlly(2);
+            }
         }
+        //This return statement only gets called when all necessary conditions are met
+        return ally;
     }
     
 
@@ -385,24 +396,27 @@ class Game {
         Allies: An array of allies that the player will attempt to heal
     */
     promptForAllies(numAllies, reprompt, alliesToHeal = []) {
-        console.log(this.getAllies());
+        this.messageUser(this.getAllies());
         if(numAllies >= this.enemies.length) {
-            console.log("This spell will attempt to heal all allies.");
+            this.messageUser("This spell will attempt to heal all allies.");
             return this.allies;
         }
-        if(reprompt === true) {
-            console.log("Your character cannot find that ally anywhere. Please try again.");
+        if(reprompt) {
+            this.messageUser("Your character cannot find that ally anywhere. Please try again.");
         }
         while(numAllies > 0) {
             var allyToHeal = this.getUserInput("Please select an ally to heal. You can heal " + String(numAllies) + " more allies.");
             var ally = this.getEnemyByName(allyToHeal);
             if(ally === -1) {
-                this.promptForAllies(numAllies, true, alliesToHeal);
+                return this.promptForAllies(numAllies, 1, alliesToHeal);
             }
-            else {
-                alliesToHeal.push(ally);
-                numAllies--;
+            for(var i = 0; i < ally.statusEffects.length; i++) {
+                if(this.getStatusEffectByName(ally.statusEffects[i].statusEffect).preventsIncomingHealing) {
+                    return this.promptForAllies(numAllies, 2, alliesToHeal);
+                }
             }
+            alliesToHeal.push(ally);
+            numAllies--;
         }
         return alliesToHeal;
     }
@@ -417,20 +431,20 @@ class Game {
         Ability: Returns the ability if the player has it and it is in the game; otherwise reprompts
     */
     promptForAbility(reprompt, player, statusEffects) {
-        console.log(player.abilities);
+        this.messageUser(player.abilities);
         var abilityToUse;
         switch(reprompt) {
             case 1:
-                console.log("Your character doesn't know that move. Please try again.");
+                this.messageUser("Your character doesn't know that move. Please try again.");
                 break;
             case 2:
-                console.log("Your character cannot use magic attacks on this turn. Please try again.");
+                this.messageUser("Your character cannot use magic attacks on this turn. Please try again.");
                 break;
             case 3:
-                console.log("Your character cannot use magic attacks on this turn. Please try again.");
+                this.messageUser("Your character cannot use magic attacks on this turn. Please try again.");
                 break;
             case 4:
-                console.log("Your character cannot use healing abilities on this turn. Please try again.");
+                this.messageUser("Your character cannot use healing abilities on this turn. Please try again.");
                 break;
             default:
                 break;
@@ -483,11 +497,11 @@ class Game {
     */
     calculateHitOrMissDamage(player, enemy, ability) {
         if(((ability.accuracy * player.dexterity) / enemy.evasion) * Math.random() < 0.30) {
-            console.log("Ability missed.");
-            return false;
+            this.messageUser("Ability missed.");
+            return 0;
         }
         else {
-            return true;
+            return 1;
         }
     }
 
@@ -503,11 +517,11 @@ class Game {
     */
     calculateHitOrMissHealing(player, ally, ability) {
         if(((ability.accuracy * player.dexterity) / (ally.currentHealth / ally.maxHealth)) * Math.random() < 0.40) {
-            console.log("Ability missed.")
-            return false;
+            this.messageUser("Ability missed.")
+            return 0;
         }
         else {
-            return true;
+            return 1;
         }
     }
 
@@ -523,11 +537,11 @@ class Game {
         if(ability.statusEffect != "none") {
             if(Math.random() < ability.chance) {
                 /*This means the status effect hits*/
-                console.log(String(ability.statusEffect) + " applied!");
-                return true;
+                this.messageUser(String(ability.statusEffect) + " applied!");
+                return 1;
             }
         }
-        return false;
+        return 0;
     }
 
 
@@ -579,7 +593,7 @@ class Game {
     */
     calculateCrit(player, damage) {
         if(player.luck * Math.random() > .8) {
-            console.log("Critical Hit!");
+            this.messageUser("Critical Hit!");
             damage *= 2;
         }
         return damage;
@@ -673,12 +687,24 @@ class Game {
         this.players.push(player);
     }
 
+    addAlly(name, abilities, strength, defense, wisdom, resilience, dexterity, evasion, maxHealth, currentHealth, luck, speed, statusEffects) {
+        var ally = new Ally(name, abilities, strength, defense, wisdom, resilience, dexterity, evasion, maxHealth, currentHealth, luck, speed, statusEffects);
+        for(var i = 0; i < statusEffects.length; i++) {
+            ally.reduceStatsByStatusEffect(this.getStatusEffectByName(statusEffects[i].statusEffect));
+        }
+        this.allies.push(ally);
+    }
+
     addEnemy(name, abilities, strength, defense, wisdom, resilience, dexterity, evasion, maxHealth, currentHealth, luck, speed, statusEffects) {
         var enemy = new Enemy(name, abilities, strength, defense, wisdom, resilience, dexterity, evasion, maxHealth, currentHealth, luck, speed, statusEffects);
         for(var i = 0; i < statusEffects.length; i++) {
             enemy.reduceStatsByStatusEffect(this.getStatusEffectByName(statusEffects[i].statusEffect));
         }
         this.enemies.push(enemy);
+    }
+
+    messageUser(message) {
+        console.log(message);
     }
 }
 
