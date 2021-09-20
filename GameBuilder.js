@@ -72,10 +72,9 @@ class Game {
             if(this.deathCheck(turnOrder[i])) {
                 continue;
             }
-            var statusEffects = this.statusEffectCheck(turnOrder[i]);
-            //Character died by bleed
-            if(statusEffects.length === 0) {
-                continue;
+            //Checks if character died to bleed
+            if(!this.statusEffectCheck(turnOrder[i])) {
+                continue
             }
             //Character loses their turn
             if(statusEffects[0]) {
@@ -142,79 +141,22 @@ class Game {
     Parameters:
         Character: The character whose turn it is
     Returns:
-        Current Status Effects: An array containing all of the conditions applied to the character by its status effects (a summation of
-        the status effects):
-            [0]: Character's turn ends
-            [1]: Character cannot use magic attacks
-            [2]: Character cannot use physical attacks
-            [3]: (TODO: refactor) Character cannot receive healing (currently unused)
-            [4]: Character cannot give healing
-            [5]: Character's magic attack reduction
-            [6]: Character's physical attack reduction
+        Boolean: True if character survived, false if character died
     */
     statusEffectCheck(character) {
-        var currStatusEffects = [0, 0, 0, 0, 0, 0, 0, 0];
-        var charStatusEffects = character.statusEffects;
-        //TEST: console.log("Pre-check character stats:" + character.toString());
-        //TEST: console.log("Current status effects: ");
-        for(var i = 0; i < charStatusEffects.length; i++) {
-            //gets the status effect object based on the name of the status effect
-            var statusEffect = this.getStatusEffectByName(character.statusEffects[i].statusEffect);
-            //TEST: console.log(statusEffect);
-            //Stores whether the turn ends right away (still need to apply bleed damage, stat reductions, etc.)
-            if(statusEffect.endsTurn) {
-                currStatusEffects[0] = 1;
+        if(character.conditions.damageTakenPerRound !== 0)  {
+            this.executeDamage(character, character.conditions.damageTakenPerRound);
+            //Implies the character died from on-turn damage; returns false
+            if(typeof character === 'undefined') {
+                return 0;
             }
-            //Stores magic attack prevention for use in turn
-            else if(statusEffect.preventsMagicAttacks) {
-                currStatusEffects[1] = 1;
-            }
-            //Stores physical attack prevention for use in turn
-            else if(statusEffect.preventsPhysicalAttacks) {
-                currStatusEffects[2] = 1;
-            }
-            //Stores incoming healing prevention for use in turn
-            else if(statusEffect.preventsIncomingHealing) {
-                currStatusEffects[3] = 1;
-            }
-            //Stores outgoing healing prevention for use in turn
-            else if(statusEffect.preventsOutgoingHealing) {
-                currStatusEffects[4] = 1;
-            }
-            //Stores magic attack reduction for use in turn
-            else if(statusEffect.magicAttackReduction !== 0) {
-                currStatusEffects[5] = statusEffect.magicAttackReduction;
-            }
-            //Stores physical attack reduction for use in turn
-            else if(statusEffect.physicalAttackReduction !== 0) {
-                currStatusEffects[6] = statusEffect.physicalAttackReduction;
-            }
-            //Damages the character based on the damage per round
-            else if(statusEffect.damagePerRound !== 0)  {
-                this.executeDamage(character, statusEffect.damagePerRound);
-                //Implies the character died from bleed; returns empty array
-                if(typeof character === 'undefined') {
-                    return [];
-                }
-            }
-            //Performs stat reductions or Reverts stats for expiring stat reductions
-            else if(statusEffect.statsReduced.length !== 0) {
-                //Loops through the stats reduced by the current status effect
-                for(var j = 0; j < statusEffect.statsReduced.length; j++) {
-                    //Checks if the current status effect is ending and reverts stat reductions if it is
-                    if(character.statusEffects[i].duration <= 1) {
-                        character.changeStat(statusEffect.statsReduced[j].statReduced, 1.0 + statusEffect.statsReduced[j].reducedBy);
-                    }
-                }
-            }
-            //TEST: console.log("\tStatus Effect: " + character.statusEffects[i].statusEffect.toString() + " Duration (before decrement): " + character.statusEffects[i].duration.toString());
-            //decrements duration of status effects
-            character.statusEffects[i].duration--;
         }
-        //removes expired status effects
-        character.statusEffects = character.statusEffects.filter(item => item.duration > 0);
-        //TEST: console.log("Post-check character stats:" + character.toString());
-        return currStatusEffects;
+        //Reverts status conditions for all expiring status effects
+        for(var i = 0; i < character.statusEffects.length; i++) {
+            character.statusEffects.duration--;
+        }
+        character.removeStatusEffects();
+        return 1;
     }
 
 
@@ -311,7 +253,7 @@ class Game {
         var damage = this.calculateDamage(player, enemy, ability);
         /*Ability + Enemy + Hit + Status Effect + Damage successfully received*/
         damage = this.calculateCrit(player, damage);
-        this.messageUser("You hit " + enemy.name + " for " + String(damage) + " damage!");
+        this.messageUser("You hit " + enemy.name + " for " + damage.toString() + " damage!");
         this.executeDamage(enemy, damage);
     }
 
@@ -330,7 +272,7 @@ class Game {
         }
         var healing = this.calculateHealing()
         healing = this.calculateCrit(player, healing);
-        this.messageUser("You healed " + ally.name + " for " + String(healing) + "health!");
+        this.messageUser("You healed " + ally.name + " for " + healing.toString() + "health!");
         ally.currentHealth += healing;
     }
 
@@ -433,13 +375,10 @@ class Game {
     Returns:
         Enemies to Attack: An array of enemies that an attack will hit
     */
-    promptForEnemies(numEnemies, reprompt, enemiesToAttack = []) {
+    promptForEnemies(numEnemies, enemiesToAttack = []) {
         if(numEnemies >= this.enemies.length) {
             this.messageUser("This attack will attempt to hit all enemies.");
             return this.enemies;
-        }
-        if(reprompt) {
-            this.messageUser("Your character cannot find that enemy anywhere. Please try again.");
         }
         while(numEnemies > 0) {
             this.messageUser("Please select an enemy to attack. You can attack " + numEnemies.toString() + " more enemies.");
@@ -497,7 +436,7 @@ class Game {
     Returns:
         Allies: An array of allies that the player will attempt to heal
     */
-    promptForAllies(numAllies, reprompt, alliesToHeal = []) {
+    promptForAllies(numAllies, alliesToHeal = []) {
         if(numAllies >= this.enemies.length) {
             this.messageUser("This spell will attempt to heal all allies.");
             return this.allies;
@@ -537,19 +476,24 @@ class Game {
             case 4:
                 this.messageUser("Your character cannot use healing abilities on this turn. Please try again.");
                 break;
+            case 5:
+                this.messageUser("Your character cannot use attacks on this turn. Please try again.");
             default:
                 break;
         }
         abilityToUse = this.getUserInput("Which ability would you like to use?");
         const ability = this.getAbilityByName(abilityToUse);
-        if(ability.modifier === 'wisdom' && statusEffects[1]) {
+        if(ability.modifier === 'wisdom' && !player.conditions.canMagicAttack) {
             this.promptForAbility(2, player);
         }
-        else if(ability.modifier === 'strength' && statusEffects[2]) {
+        else if(ability.modifier === 'strength' && !player.conditions.canPhysicalAttack) {
             this.promptForAbility(3, player);
         }
-        else if(ability.targetType === 'ally' && statusEffects[3]) {
+        else if(ability.targetType === 'ally' && !player.conditions.canGiveHealing) {
             this.promptForAbility(4, player);
+        }
+        else if(ability.targetType === 'enemy' && !player.canAttack) {
+            this.promptForAbility(5, player);
         }
         else if(ability !== -1 && player.abilities.includes(abilityToUse)) {
             return ability;
@@ -587,7 +531,7 @@ class Game {
         Boolean: True if the attack hits, false if the attack misses
     */
     calculateHitOrMissDamage(player, enemy, ability) {
-        if(((ability.accuracy * player.dexterity) / enemy.evasion) * Math.random() < 0.30) {
+        if(((ability.accuracy * player.stats.dexterity) / enemy.stats.evasion) * Math.random() < 0.30) {
             this.messageUser("Ability missed.");
             return 0;
         }
@@ -607,7 +551,7 @@ class Game {
         Boolean: True if the healing is received, false if the healing fails
     */
     calculateHitOrMissHealing(player, ally, ability) {
-        if(((ability.accuracy * player.dexterity) / (ally.currentHealth / ally.maxHealth)) * Math.random() < 0.40) {
+        if(((ability.accuracy * player.stats.dexterity) / (ally.stats.currentHealth / ally.stats.maxHealth)) * Math.random() < 0.40) {
             this.messageUser("Ability missed.")
             return 0;
         }
@@ -648,10 +592,10 @@ class Game {
     calculateDamage(player, enemy, ability) {
         let damage;
         if(ability.modifier === "strength") {
-            damage = (player.strength * ability.multiplier) / (enemy.defense * 0.1);
+            damage = (player.stats.strength * ability.multiplier) / (enemy.stats.defense * 0.1);
         }
         else if(ability.modifier === "magic") {
-            damage = (player.wisdom * ability.multiplier) / (enemy.resilience * 0.1);
+            damage = (player.stats.wisdom * ability.stats.multiplier) / (enemy.stats.resilience * 0.1);
         }
         else {
             return 0;
@@ -670,7 +614,7 @@ class Game {
         Integer: Amount of healing given
     */
     calculateHealing(player, ally, ability) {
-        return ((player.wisdom * ability.multiplier) / (ally.currentHealth / ally.maxHealth));
+        return ((player.stats.wisdom * ability.multiplier) / (ally.stats.currentHealth / ally.stats.maxHealth));
     }
 
 
@@ -856,4 +800,5 @@ myGame.addPlayer("Jonka", ["Sweep", "Slice", "Minor Group Heal", "Minor Arcane B
 myGame.addEnemy("Jonku", ["Punch","Minor Arcana Beam", "Slice", "Minor Heal"], 1, 1, 1, 1, 1, 1, 1, 1, 1, 36, []);
 myGame.addEnemy("Jonky", ["Minor Group Heal", "Minor Arcane Beam", "Sweep"], 14, 1, 1, 2, 1, 1, 8, 8, 2, 11, []);
 
-myGame.playGame();
+console.log(myGame.getPlayerByName("Jonka").statReductionCalculation(75, 50));
+//myGame.playGame();
