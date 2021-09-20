@@ -16,7 +16,7 @@ Status effect attributes and their effects:
 NOTE: Status effects need to be handled on a per-game basis using conditionals
 */
 class StatusEffect {
-    constructor(name, effect, endsTurn = 0, preventsMagicAttacks = 0, preventsPhysicalAttacks = 0, preventsIncomingHealing = 0, preventsOutgoingHealing = 0, magicAttackReduction = 0, physicalAttackReduction = 0, damagePerRound = 0, statsReduced = [], percentReducedBy = []) {
+    constructor(name, effect, endsTurn = 0, preventsMagicAttacks = 0, preventsPhysicalAttacks = 0, preventsIncomingHealing = 0, preventsOutgoingHealing = 0, magicAttackReduction = 0, physicalAttackReduction = 0, damagePerRound = 0, statsReduced = []) {
         this.name = name;
         this.effect = effect;
         this.endsTurn = endsTurn;

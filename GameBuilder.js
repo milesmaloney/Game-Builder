@@ -24,16 +24,16 @@ class Game {
         this.allies = allies;
         this.abilities = abilities;
         this.statusEffects = statusEffects;
+        this.turnCount = 0;
         this.gameOver = 0;
     }
 
 
     /*
-    TODO: This function will play the game until a game over is reached
     Parameters:
-        ?
+        None; This function should run on its own
     Returns:
-        ?
+        None; This function handles the main event loop of the game
     */
     playGame() {
         //Initialize all values that need to be initialized outside of the loop (currently none)
@@ -56,16 +56,30 @@ class Game {
         None; the purpose of this function is to loop while the objects' attributes are changed
     */
     executeTurnLoop() {
-        if(this.enemies.length === 0 || this.players.length === 0) {
-            this.gameOver = 1;
+        this.turnCount++;
+        this.messageUser("Turn " + this.turnCount.toString() + ":");
+        if(this.enemies.length === 0) {
+            this.cueGameOver(0);
             return;
         }
-        const turnOrder = this.setTurnOrder();
+        else if(this.players.length === 0) {
+            this.cueGameOver(1);
+            return;
+        }
+        var turnOrder = this.setTurnOrder();
         for(var i = 0; i < turnOrder.length; i++) {
-            //TEST: console.log(turnOrder[i].name);
+            this.messageUser("It is " + turnOrder[i].name + "'s turn.");
+            if(this.deathCheck(turnOrder[i])) {
+                continue;
+            }
             var statusEffects = this.statusEffectCheck(turnOrder[i]);
-            //TEST: console.log("status effect check done.");
+            //Character died by bleed
+            if(statusEffects.length === 0) {
+                continue;
+            }
+            //Character loses their turn
             if(statusEffects[0]) {
+                this.messageUser(turnOrder[i].name + " loses their turn! Continuing to next turn...");
                 continue;
             }
             if(turnOrder[i].type === "player") {
@@ -73,6 +87,38 @@ class Game {
                 this.takePlayerTurn(turnOrder[i], statusEffects);
             }
         }
+    }
+
+    /*
+    This function checks if a character in the turn order is dead and returns a spliced array if they are
+    Parameters:
+        turnOrder: The turn order array
+        Index: The character's index in the array
+    Returns:
+        Boolean: Boolean value determining whether or not the character is dead (1 if dead, 0 if alive)
+    */
+    deathCheck(character) {
+        switch(character.type) {
+            case 'player':
+                if(this.getPlayerByName(character.name) === -1){
+                    this.messageUser(character.name + " is dead! Moving on to next turn...");
+                    return 1;
+                }
+                break;
+            case 'enemy':
+                if(this.getEnemyByName(character.name) === -1) {
+                    this.messageUser(character.name + " is dead! Moving on to next turn...");
+                    return 1;
+                }
+                break;
+            case 'ally':
+                if(this.getAllyByName(character.name) === -1) {
+                    this.messageUser(character.name + " is dead! Moving on to next turn...");
+                    return 1
+                }
+                break;
+        }
+        return 0;
     }
 
     /*
@@ -97,13 +143,21 @@ class Game {
         Character: The character whose turn it is
     Returns:
         Current Status Effects: An array containing all of the conditions applied to the character by its status effects (a summation of
-        the status effects)
+        the status effects):
+            [0]: Character's turn ends
+            [1]: Character cannot use magic attacks
+            [2]: Character cannot use physical attacks
+            [3]: (TODO: refactor) Character cannot receive healing (currently unused)
+            [4]: Character cannot give healing
+            [5]: Character's magic attack reduction
+            [6]: Character's physical attack reduction
     */
     statusEffectCheck(character) {
-        var currStatusEffects = [0, 0, 0, 0, 0, 0, 0];
+        var currStatusEffects = [0, 0, 0, 0, 0, 0, 0, 0];
+        var charStatusEffects = character.statusEffects;
         //TEST: console.log("Pre-check character stats:" + character.toString());
         //TEST: console.log("Current status effects: ");
-        for(var i = 0; i < character.statusEffects.length; i++) {
+        for(var i = 0; i < charStatusEffects.length; i++) {
             //gets the status effect object based on the name of the status effect
             var statusEffect = this.getStatusEffectByName(character.statusEffects[i].statusEffect);
             //TEST: console.log(statusEffect);
@@ -138,6 +192,10 @@ class Game {
             //Damages the character based on the damage per round
             else if(statusEffect.damagePerRound !== 0)  {
                 this.executeDamage(character, statusEffect.damagePerRound);
+                //Implies the character died from bleed; returns empty array
+                if(typeof character === 'undefined') {
+                    return [];
+                }
             }
             //Performs stat reductions or Reverts stats for expiring stat reductions
             else if(statusEffect.statsReduced.length !== 0) {
@@ -183,6 +241,7 @@ class Game {
     */        
     takePlayerTurn(player, statusEffects) {
         //TEST: console.log(player);
+        //TEST: console.log(statusEffects);
         const ability = this.promptForAbility(0, player, statusEffects);
         /*Attacking an Enemy*/
         if(ability.targetType === 'enemy') {
@@ -240,7 +299,13 @@ class Game {
         /*Ability + Enemy + Hit successfully received*/
         if(this.calculateStatusEffect(ability)) {
             enemy.statusEffects.push({ statusEffect: ability.statusEffect, duration: ability.duration });
-            enemy.reduceStatsByStatusEffect(this.getStatusEffectByName(ability.statusEffect));
+            var statusEffectApplied = this.getStatusEffectByName(ability.statusEffect);
+            if(statusEffectApplied !== -1) {
+                enemy.reduceStatsByStatusEffect(this.getStatusEffectByName(ability.statusEffect));
+            }
+            else {
+                this.messageUser("Ability's status effect not found.");
+            }
         }
         /*Ability + Enemy + Hit + Status Effect successfully received*/
         var damage = this.calculateDamage(player, enemy, ability);
@@ -283,13 +348,13 @@ class Game {
         character.currentHealth = character.currentHealth - damage;
         if(character.currentHealth <= 0) {
             switch(character.type) {
-                case player:
+                case 'player':
                     this.killCharacter(character, this.players);
                     break;
-                case enemy:
+                case 'enemy':
                     this.killCharacter(character, this.enemies);
                     break;
-                case ally:
+                case 'ally':
                     this.killCharacter(character, this.allies);
                     break;
             }
@@ -310,7 +375,24 @@ class Game {
         array.splice(index, 1);
     }
     
-    
+    /*
+    This function informs the user whether they win or lose when the game ends
+    Parameters:
+        winOrLose: A boolean value (0 or 1) denoting whether all players died or all enemies died
+    Returns:
+        None; Outputs message to user and mutates gameOver value to true
+    */
+    cueGameOver(winOrLose) {
+        switch(winOrLose) {
+            case 0:
+                this.messageUser("You have been defeated. You lose.");
+                break;
+            case 1:
+                this.messageUser("You have defeated all enemies. You win!");
+                break;
+        }
+        this.gameOver = 1;
+    }
 
 
 /*------------------------------------------------------Prompt Functions--------------------------------------------------------------*/
@@ -324,7 +406,10 @@ class Game {
         Enemy: The enemy to be attacked
     */
     promptForEnemy(reprompt) {
-        this.messageUser(this.getEnemies());
+        var enemyList = this.getEnemies();
+        for(var i = 0; i < enemyList.length; i++) {
+            this.messageUser(enemyList[i].promptString());
+        }
         if(reprompt) {
             this.messageUser("Your character doesn't see that enemy anywhere! Please try again.");
         }
@@ -349,7 +434,6 @@ class Game {
         Enemies to Attack: An array of enemies that an attack will hit
     */
     promptForEnemies(numEnemies, reprompt, enemiesToAttack = []) {
-        this.messageUser(this.getEnemies());
         if(numEnemies >= this.enemies.length) {
             this.messageUser("This attack will attempt to hit all enemies.");
             return this.enemies;
@@ -375,7 +459,10 @@ class Game {
         Ally: The ally to receive healing
     */
     promptForAlly(reprompt) {
-        this.messageUser(this.getAllies());
+        var enemyList = this.getEnemies();
+        for(var i = 0; i < enemyList.length; i++) {
+            this.messageUser(enemyList[i].promptString());
+        }
         switch(reprompt) {
             case 1:
                 this.messageUser("Your character couldn't see that ally. Please try again.");
@@ -435,6 +522,7 @@ class Game {
     */
     promptForAbility(reprompt, player, statusEffects) {
         this.messageUser(player.abilities);
+        this.messageUser(statusEffects);
         var abilityToUse;
         switch(reprompt) {
             case 1:
@@ -463,7 +551,7 @@ class Game {
         else if(ability.targetType === 'ally' && statusEffects[3]) {
             this.promptForAbility(4, player);
         }
-        else if(ability != -1 && player.abilities.includes(abilityToUse)) {
+        else if(ability !== -1 && player.abilities.includes(abilityToUse)) {
             return ability;
         }
         else {
@@ -540,7 +628,7 @@ class Game {
         if(ability.statusEffect != "none") {
             if(Math.random() < ability.chance) {
                 /*This means the status effect hits*/
-                this.messageUser(String(ability.statusEffect) + " applied!");
+                this.messageUser(ability.statusEffect.toString() + " applied!");
                 return 1;
             }
         }
@@ -743,7 +831,7 @@ myGame.addStatusEffect("none", "Abilities with no status effect behave as normal
 
 //Initialize abilities (12 targets = all targets)
 //Single Target Physical Attacks
-myGame.addAbility("Slice", "bleed", 0.33, 1, "enemy", 1, 90, "strength", 0.66);
+myGame.addAbility("Slice", "bleeding", 0.33, 1, "enemy", 1, 90, "strength", 0.66);
 myGame.addAbility("Punch", "none", 0, 0, "enemy", 1, 100, "strength", 1.0);
 
 //Multi Target Physical Attacks
@@ -762,12 +850,10 @@ myGame.addAbility("Minor Arcane Beam", "none", 0, 0, "enemy", 1, 80, "wisdom", 1
 myGame.addAbility("Minor Arcane Barrage", "none", 0, 0, "enemy", 12, 70, "wisdom", 0.4);
 
 //Initialize Players
-myGame.addPlayer("Jonka", ["Sweep", "Slice", "Minor Group Heal", "Minor Arcana Barrage"], 3, 1, 5, 2, 3, 5, 12, 12, 2, 50, [{ statusEffect: "stunned", duration: 3 }, { statusEffect: "silenced", duration: 4 }, { statusEffect: "slowed", duration: 2 }, { statusEffect: "disarmed", duration: 5 }]);
+myGame.addPlayer("Jonka", ["Sweep", "Slice", "Minor Group Heal", "Minor Arcane Barrage"], 3, 1, 5, 2, 3, 5, 12, 12, 2, 50, [{ statusEffect: "stunned", duration: 3 }, { statusEffect: "silenced", duration: 4 }, { statusEffect: "slowed", duration: 2 }, { statusEffect: "disarmed", duration: 5 }]);
 
 //Initialize Enemies
 myGame.addEnemy("Jonku", ["Punch","Minor Arcana Beam", "Slice", "Minor Heal"], 1, 1, 1, 1, 1, 1, 1, 1, 1, 36, []);
-myGame.addEnemy("Jonky", ["Minor Group Heal", "Minor Arcane Beam", "Sweep"], 14, -4, 0, 2, 1, 1, 8, 8, 2, 11, []);
+myGame.addEnemy("Jonky", ["Minor Group Heal", "Minor Arcane Beam", "Sweep"], 14, 1, 1, 2, 1, 1, 8, 8, 2, 11, []);
 
-for(var i = 0; i < 5; i++) {
-    console.log(myGame.statusEffectCheck(myGame.getPlayerByName("Jonka")));
-}
+myGame.playGame();
