@@ -311,7 +311,7 @@ class Game {
         var enemyToAttack = this.getUserInput("Which enemy would you like to attack?");
         var enemy = this.getEnemyByName(enemyToAttack);
         if(enemy === -1) {
-            this.promptForEnemy(1);
+            return this.promptForEnemy(1);
         }
         else {
             return enemy;
@@ -338,15 +338,10 @@ class Game {
             this.messageUser("Your character cannot find that enemy anywhere. Please try again.");
         }
         while(numEnemies > 0) {
-            var enemyToAttack = this.getUserInput("Please select an enemy to attack. You can attack " + String(numEnemies) + " more enemies.");
-            var enemy = this.getEnemyByName(enemyToAttack);
-            if(enemy === -1) {
-                this.promptForEnemies(numEnemies, 1, enemiesToAttack);
-            }
-            else {
-                enemiesToAttack.push(enemy);
-                numEnemies--;
-            }
+            this.messageUser("Please select an enemy to attack. You can attack " + numEnemies.toString() + " more enemies.");
+            var enemy = this.promptForEnemy(0);
+            enemiesToAttack.push(enemy);
+            numEnemies--;
         }
         return enemiesToAttack;
     }
@@ -396,25 +391,13 @@ class Game {
         Allies: An array of allies that the player will attempt to heal
     */
     promptForAllies(numAllies, reprompt, alliesToHeal = []) {
-        this.messageUser(this.getAllies());
         if(numAllies >= this.enemies.length) {
             this.messageUser("This spell will attempt to heal all allies.");
             return this.allies;
         }
-        if(reprompt) {
-            this.messageUser("Your character cannot find that ally anywhere. Please try again.");
-        }
         while(numAllies > 0) {
-            var allyToHeal = this.getUserInput("Please select an ally to heal. You can heal " + String(numAllies) + " more allies.");
-            var ally = this.getEnemyByName(allyToHeal);
-            if(ally === -1) {
-                return this.promptForAllies(numAllies, 1, alliesToHeal);
-            }
-            for(var i = 0; i < ally.statusEffects.length; i++) {
-                if(this.getStatusEffectByName(ally.statusEffects[i].statusEffect).preventsIncomingHealing) {
-                    return this.promptForAllies(numAllies, 2, alliesToHeal);
-                }
-            }
+            this.messageUser("Please select an ally to heal. You can heal " + numAllies.toString() + " more allies.");
+            var ally = promptForAlly(0);
             alliesToHeal.push(ally);
             numAllies--;
         }
