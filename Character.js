@@ -89,6 +89,10 @@ class Character {
     toString() {
         return ("\n\tStrength: " + this.strength.toString() + "\n\tDefense: " + this.defense.toString() + "\n\tWisdom: " + this.wisdom.toString() + "\n\tResilience: " + this.resilience.toString() + "\n\tDexterity: " + this.dexterity.toString() + "\n\tEvasion: " + this.evasion.toString() + "\n\tMax Health: " + this.maxHealth.toString() + "\n\tCurrent Health: " + this.currentHealth.toString() + "\n\tLuck: " + this.currentHealth.toString() + "\n\tSpeed: " + this.speed.toString());
     }
+
+    promptString() {
+        return "Name: " + this.name + "\nHealth: " + this.currentHealth;
+    }
 }
 
 module.exports = Character
