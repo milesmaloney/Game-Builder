@@ -36,11 +36,12 @@ class Game {
         ?
     */
     playGame() {
-        //Initialize all values that need to be initialized outside of the loop
+        //Initialize all values that need to be initialized outside of the loop (currently none)
         //Execute the turn loop until the game is over
         while(!this.gameOver) {
             this.executeTurnLoop();
         }
+        this.messageUser("Game over!");
     }
 
 
@@ -57,6 +58,7 @@ class Game {
     executeTurnLoop() {
         if(this.enemies.length === 0 || this.players.length === 0) {
             this.gameOver = 1;
+            return;
         }
         const turnOrder = this.setTurnOrder();
         for(var i = 0; i < turnOrder.length; i++) {
@@ -279,18 +281,36 @@ class Game {
     */
     executeDamage(character, damage) {
         character.currentHealth = character.currentHealth - damage;
-        //TODO: Character is dead
         if(character.currentHealth <= 0) {
             switch(character.type) {
                 case player:
+                    this.killCharacter(character, this.players);
                     break;
                 case enemy:
+                    this.killCharacter(character, this.enemies);
                     break;
                 case ally:
+                    this.killCharacter(character, this.allies);
                     break;
             }
         }
     }
+
+    /*
+    This function helps with the occurrence of character deaths in the execute damage function
+    Parameters:
+        Character: The character that is dying
+        Array: The array the character is stored in
+    Returns:
+        None; The function will inform the user a character has died and remove the character from the game
+    */
+    killCharacter(character, array) {
+        this.messageUser(character.name + " has died!");
+        let index = array.findIndex(charFind => charFind.name === character.name);
+        array.splice(index, 1);
+    }
+    
+    
 
 
 /*------------------------------------------------------Prompt Functions--------------------------------------------------------------*/
