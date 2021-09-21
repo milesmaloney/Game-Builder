@@ -74,8 +74,8 @@ class Character {
     }
 
 
-
     applyStatusEffect(statusEffect) {
+        //TEST: console.log(statusEffect);
         if(statusEffect.endsTurn) {
             this.conditions.hasTurn = 0;
         }
@@ -99,16 +99,16 @@ class Character {
             this.conditions.canStealth = 0;
         }
         if(statusEffect.magicAttackReduction !== 0) {
-            this.conditions.magicAttackChange *= (statusEffect.magicAttackReduction / 100);
+            this.conditions.magicAttackChange -= statusEffect.magicAttackReduction;
         }
         if(statusEffect.physicalAttackReduction !== 0) {
-            this.conditions.physicalAttackChange *= (statusEffect.physicalAttackReduction / 100);
+            this.conditions.physicalAttackChange -= statusEffect.physicalAttackReduction;
         }
         if(statusEffect.damagePerRound !== 0) {
             this.conditions.damageTakenPerRound += statusEffect.damagePerRound;
         }
         for(var i = 0; i < statusEffect.statsReduced.length; i++) {
-            this.changeStat(statusEffect.statsReduced.statReduced, statusEffect.statsReduced.reducedBy)
+            this.changeStat(statusEffect.statsReduced[i].statReduced, statusEffect.statsReduced[i].reducedBy, 0);
         }
     }
 
@@ -119,73 +119,76 @@ class Character {
     Returns:
         None; updates the characters conditions based on the remaining status effects
     */
-    removeStatusEffects() {
-        booleanConditions = [0, 0, 0, 0, 0, 0, 0]
-        for(var i = 0; i < statusEffects.length; i++) {
-            statusEffects[i].duration--;
-            if(statusEffects[i].duration === 0) {
-                if(statusEffects[i].magicAttackReduction != 0) {
-                    this.conditions.magicAttackChange /= (statusEffects[i].magicAttackReduction / 100);
+    removeStatusEffects(game) {
+        var booleanConditions = [0, 0, 0, 0, 0, 0, 0]
+        for(var i = 0; i < this.statusEffects.length; i++) {
+            var statusEffect = game.getStatusEffectByName(this.statusEffects[i].statusEffect);
+            this.statusEffects[i].duration--;
+            if(this.statusEffects[i].duration === 0) {  
+                console.log(this.name + " is no longer " + statusEffect.name);
+                if(statusEffect.magicAttackReduction !== 0) {
+                    this.conditions.magicAttackChange += statusEffect.magicAttackReduction;
                 }
-                else if(statusEffects[i].physicalAttackReduction != 0) {
-                    this.conditions.physicalAttackChange /= (statusEffects[i].physicalAttackReduction / 100);
+                else if(statusEffect.physicalAttackReduction !== 0) {
+                    this.conditions.physicalAttackChange += statusEffect.physicalAttackReduction;
                 }
-                else if(statusEffects[i].damagePerRound != 0) {
-                    this.conditions.damageTakenPerRound -= statusEffects[i].damagePerRound;
+                else if(statusEffect.damagePerRound !== 0) {
+                    this.conditions.damageTakenPerRound -= statusEffect.damagePerRound;
                 }
-                else if(statusEffects[i].statsReduced.length > 0) {
-                    for(var j = 0; j < statusEffects[i].statsReduced.length; j++) {
-                        //TODO: uncertain of this math (1/reducedBy). Need to double check.
-                        this.changeStat(statusEffects[i].statsReduced.statReduced, (1 / statusEffects[i].statReduced.reducedBy));
+                else if(statusEffect.statsReduced.length > 0) {
+                    for(var j = 0; j < statusEffect.statsReduced.length; j++) {
+                        this.changeStat(statusEffect.statsReduced[j].statReduced, statusEffect.statsReduced[j].reducedBy, 1);
                     }
                 }
+                this.statusEffects.splice(i, 1);
             }
             //Loops through remaining status effects to fill boolean conditions array
             else {
-                if(statusEffects[i].endsTurn) {
+                if(statusEffect.endsTurn) {
                     booleanConditions[0] = 1;
                 }
-                else if(statusEffects[i].preventsAttacks) {
+                else if(statusEffect.preventsAttacks) {
                     booleanConditions[1] = 1;
                 }
-                else if(statusEffects[i].preventsPhysicalAttacks) {
+                else if(statusEffect.preventsPhysicalAttacks) {
                     booleanConditions[2] = 1;
                 }
-                else if(statusEffects[i].preventsMagicAttacks) {
+                else if(statusEffect.preventsMagicAttacks) {
                     booleanConditions[3] = 1;
                 }
-                else if(statusEffects[i].preventsIncomingHealing) {
+                else if(statusEffect.preventsIncomingHealing) {
                     booleanConditions[4] = 1;
                 }
-                else if(statusEffects[i].preventsOutgoingHealing) {
+                else if(statusEffect.preventsOutgoingHealing) {
                     booleanConditions[5] = 1;
                 }
-                else if(statusEffects[i].revealsStealth) {
+                else if(statusEffect.revealsStealth) {
                     booleanConditions[6] = 1;
                 }
             }
         }
+        console.log("boolean conditions: " + booleanConditions);
         //Goes through boolean conditions array to determine character's status conditions
         if(!booleanConditions[0]) {
-            this.hasTurn = 1;
+            this.conditions.hasTurn = 1;
         }
         else if(!booleanConditions[1]) {
-            this.canAttack = 1;
+            this.conditions.canAttack = 1;
         }
         else if(!booleanConditions[2]) {
-            this.canPhysicalAttack = 1;
+            this.conditions.canPhysicalAttack = 1;
         }
         else if(!booleanConditions[3]) {
-            this.canMagicAttack = 1;
+            this.conditions.canMagicAttack = 1;
         }
         else if(!booleanConditions[4]) {
-            this.canReceiveHealing = 1;
+            this.conditions.canReceiveHealing = 1;
         }
         else if(!booleanConditions[5]) {
-            this.canGiveHealing = 1;
+            this.conditions.canGiveHealing = 1;
         }
         else if(!booleanConditions[6]) {
-            this.canStealth = 1;
+            this.conditions.canStealth = 1;
         }
     }
 
@@ -197,60 +200,107 @@ class Character {
     Returns:
         None; The function will update the Character object's attributes
     */
-    changeStat(stat, change) {
-        change = (change / 100);
+    changeStat(stat, change, revert) {
+        change = change / 100;
         switch(stat) {
             case 'strength':
-                this.updateStatReduction(this.conditions.statReductions.strength, change);
-                this.stats.strength = this.strength * change;
-                break;
+                if(revert) {
+                    this.conditions.statReductions.strength += (100 - (100 * change));
+                    this.stats.strength /= change;
+                }
+                else {
+                    this.conditions.statReductions.strength -= (100 - (100 * change));
+                    this.stats.strength *= change;
+                }
             case 'wisdom':
-                this.updateStatReduction(this.conditions.statReductions.wisdom, change);
-                this.stats.wisdom = this.wisdom * change;
-                break;
+                if(revert) {
+                    this.conditions.statReductions.wisdom += (100 - (100 * change));
+                    this.stats.wisdom /= change;
+                }
+                else {
+                    this.conditions.statReductions.wisdom -= (100 - (100 * change));
+                    this.stats.wisdom *= change;
+                }
             case 'defense':
-                this.updateStatReduction(this.conditions.statReductions.defense, change);
-                this.stats.defense = this.defense * change;
-                break;
+                if(revert) {
+                    this.conditions.statReductions.defense += (100 - (100 * change));
+                    this.stats.defense /= change;
+                }
+                else {
+                    this.conditions.statReductions.defense -= (100 - (100 * change));
+                    this.stats.defense *= change;
+                }
             case 'resilience':
-                this.updateStatReduction(this.conditions.statReductions.resilience, change);
-                this.stats.resilience = this.resilience * change;
-                break;
+                if(revert) {
+                    this.conditions.statReductions.resilience += (100 - (100 * change));
+                    this.stats.resilience /= change;
+                }
+                else {
+                    this.conditions.statReductions.resilience -= (100 - (100 * change));
+                    this.stats.resilience *= change;
+                }
             case 'dexterity':
-                this.updateStatReduction(this.conditions.statReductions.dexterity, change);
-                this.stats.dexterity = this.dexterity * change;
-                break;
+                if(revert) {
+                    this.conditions.statReductions.dexterity += (100 - (100 * change));
+                    this.stats.dexterity /= change;
+                }
+                else {
+                    this.conditions.statReductions.dexterity -= (100 - (100 * change));
+                    this.stats.dexterity *= change;
+                }
             case 'evasion':
-                this.updateStatReduction(this.conditions.statReductions.evasion, change);
-                this.stats.evasion = this.evasion * change;
-                break;
+                if(revert) {
+                    this.conditions.statReductions.evasion += (100 - (100 * change));
+                    this.stats.evasion /= change;
+                }
+                else {
+                    this.conditions.statReductions.evasion -= (100 - (100 * change));
+                    this.stats.evasion *= change;
+                }
             case 'maxHealth':
-                this.updateStatReduction(this.conditions.statReductions.maxHealth, change);
-                this.stats.maxHealth = this.maxHealth * change;
-                break;
-            //Kept for potential % Health abilities
+                if(revert) {
+                    this.conditions.statReductions.maxHealth += (100 - (100 * change));
+                    this.stats.maxHealth /= change;
+                }
+                else {
+                    this.conditions.statReductions.maxHealth -= (100 - (100 * change));
+                    this.stats.maxHealth *= change;
+                }
+            //Kept for potential % Health abilities (change > 100 for healing)
             case 'currentHealth':
-                this.stats.currentHealth = this.currentHealth * change;
+                this.stats.currentHealth = this.stats.currentHealth * change;
                 break;
             case 'luck':
-                this.updateStatReduction(this.conditions.statReductions.luck, change);
-                this.stats.luck = this.luck * change;
+                if(revert) {
+                    this.conditions.statReductions.luck += (100 - (100 * change));
+                    this.stats.luck /= change;
+                }
+                else {
+                    this.conditions.statReductions.luck -= (100 - (100 * change));
+                    this.stats.luck *= change;
+                }
                 break;
             case 'speed':
-                this.updateStatReduction(this.conditions.statReductions.speed, change);
-                this.stats.speed = this.speed * change;
+                if(revert) {
+                    this.conditions.statReductions.speed += (100 - (100 * change));
+                    this.stats.speed /= change;
+                }
+                else {
+                    this.conditions.statReductions.speed -= (100 - (100 * change));
+                    this.stats.speed *= change;
+                }
                 break;
         }
     }
 
 
     updateStatReduction(stat, change) {
-        if(change < 1) {
-            stat *= (1 + change);
-        }
-        else {
-            stat *= (change - 1);
-        }
+        console.log("stat before: " + stat)
+        console.log("change: " + change);
+        //gets the original stat change percentage (e.g. 50 for 50%)
+        change = change * 100;
+        stat -= stat - (100 - change);
+        console.log("stat after: " + stat)
     }
 
 
@@ -264,11 +314,11 @@ class Character {
 
 
     toString() {
-        return ("\n\tStrength: " + this.strength.toString() + "\n\tDefense: " + this.defense.toString() + "\n\tWisdom: " + this.wisdom.toString() + "\n\tResilience: " + this.resilience.toString() + "\n\tDexterity: " + this.dexterity.toString() + "\n\tEvasion: " + this.evasion.toString() + "\n\tMax Health: " + this.maxHealth.toString() + "\n\tCurrent Health: " + this.currentHealth.toString() + "\n\tLuck: " + this.currentHealth.toString() + "\n\tSpeed: " + this.speed.toString());
+        return ("Character: " + this.name + "\n\tStrength: " + this.stats.strength.toString() + "\n\tDefense: " + this.stats.defense.toString() + "\n\tWisdom: " + this.stats.wisdom.toString() + "\n\tResilience: " + this.stats.resilience.toString() + "\n\tDexterity: " + this.stats.dexterity.toString() + "\n\tEvasion: " + this.stats.evasion.toString() + "\n\tMax Health: " + this.stats.maxHealth.toString() + "\n\tCurrent Health: " + this.stats.currentHealth.toString() + "\n\tLuck: " + this.stats.currentHealth.toString() + "\n\tSpeed: " + this.stats.speed.toString());
     }
 
     promptString() {
-        return "Name: " + this.name + "\nHealth: " + this.currentHealth;
+        return "Name: " + this.name + "\nHealth: " + this.stats.currentHealth;
     }
 }
 

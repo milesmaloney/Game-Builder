@@ -36,7 +36,11 @@ class Game {
         None; This function handles the main event loop of the game
     */
     playGame() {
-        //Initialize all values that need to be initialized outside of the loop (currently none)
+        //Initialize all values that need to be initialized outside of the loop (currently only status effects)
+        const characters = this.players.concat(this.allies).concat(this.enemies);
+        for (var i = 0; i < characters.length; i++) {
+            this.initStatusEffects(characters[i]);
+        }
         //Execute the turn loop until the game is over
         while(!this.gameOver) {
             this.executeTurnLoop();
@@ -59,11 +63,11 @@ class Game {
         this.turnCount++;
         this.messageUser("Turn " + this.turnCount.toString() + ":");
         if(this.enemies.length === 0) {
-            this.cueGameOver(0);
+            this.cueGameOver(1);
             return;
         }
         else if(this.players.length === 0) {
-            this.cueGameOver(1);
+            this.cueGameOver(0);
             return;
         }
         var turnOrder = this.setTurnOrder();
@@ -77,13 +81,13 @@ class Game {
                 continue
             }
             //Character loses their turn
-            if(statusEffects[0]) {
+            if(!turnOrder[i].hasTurn) {
                 this.messageUser(turnOrder[i].name + " loses their turn! Continuing to next turn...");
                 continue;
             }
             if(turnOrder[i].type === "player") {
                 this.messageUser(turnOrder[i].name + "'s turn starting...");
-                this.takePlayerTurn(turnOrder[i], statusEffects);
+                this.takePlayerTurn(turnOrder[i]);
             }
         }
     }
@@ -152,10 +156,7 @@ class Game {
             }
         }
         //Reverts status conditions for all expiring status effects
-        for(var i = 0; i < character.statusEffects.length; i++) {
-            character.statusEffects.duration--;
-        }
-        character.removeStatusEffects();
+        character.removeStatusEffects(this);
         return 1;
     }
 
@@ -181,22 +182,23 @@ class Game {
             *The defender's evasion
             *The attacker's luck
     */        
-    takePlayerTurn(player, statusEffects) {
+    takePlayerTurn(player) {
         //TEST: console.log(player);
         //TEST: console.log(statusEffects);
-        const ability = this.promptForAbility(0, player, statusEffects);
+        const ability = this.promptForAbility(0, player);
+        //TEST: console.log("After:" + ability);
         /*Attacking an Enemy*/
         if(ability.targetType === 'enemy') {
             /*Multiple Targets*/
             if(ability.numTargets > 1) {
-                const enemies = this.promptForEnemies(ability.numTargets, 0);
+                const enemies = this.promptForEnemies(ability.numTargets, player, 0);
                 for(var i = 0; i < enemies.length; i++) {
                     this.attackEnemy(player, enemies[i], ability);
                 }
             }
             /*Single Target*/
             else {
-                const enemy = this.promptForEnemy(0);
+                const enemy = this.promptForEnemy(0, player);
                 this.attackEnemy(player, enemy, ability);
             }
         }
@@ -204,14 +206,14 @@ class Game {
         else if(ability.targetType === 'ally') {
             /*Multiple Targets*/
             if(ability.numTargets > 1) {
-                const allies = this.promptForAllies(ability.numTargets, 0);
+                const allies = this.promptForAllies(ability.numTargets, player, 0);
                 for(var i = 0; i < allies.length; i++) {
                     this.healAlly(player, allies[i], ability);
                 }
             }
             /*Single Target*/
             else {
-                const ally = this.promptForAlly(0);
+                const ally = this.promptForAlly(0, player);
                 this.healAlly(player, ally, ability);
             }
         }
@@ -287,8 +289,8 @@ class Game {
         died.
     */
     executeDamage(character, damage) {
-        character.currentHealth = character.currentHealth - damage;
-        if(character.currentHealth <= 0) {
+        character.stats.currentHealth = character.stats.currentHealth - damage;
+        if(character.stats.currentHealth <= 0) {
             switch(character.type) {
                 case 'player':
                     this.killCharacter(character, this.players);
@@ -337,6 +339,24 @@ class Game {
     }
 
 
+    /*
+    This function will initialize status effects when a character is constructed with pre-determined status effects
+    Parameters:
+        Character: The character currently being initialized
+    Returns:
+        None; the function will fill the character's conditions property
+    */
+    initStatusEffects(character) {
+        //TEST: console.log(character.toString());
+        //TEST: console.log(character.statusEffects);
+        for(var i = 0; i < character.statusEffects.length; i++) {
+            character.applyStatusEffect(this.getStatusEffectByName(character.statusEffects[i].statusEffect));
+        }
+        //TEST: console.log(character.conditions);
+    }
+      
+
+
 /*------------------------------------------------------Prompt Functions--------------------------------------------------------------*/
 
 
@@ -344,12 +364,14 @@ class Game {
     This function will prompt the player for which enemy (singular) they want to attack and return the enemy object
     Parameters:
         Reprompt: A boolean value to determine whether or not the player has already failed the prompt
+        Character: The character that is making an attack
     Returns:
         Enemy: The enemy to be attacked
     */
-    promptForEnemy(reprompt) {
-        var enemyList = this.getEnemies();
+    promptForEnemy(reprompt, character) {
+        var enemyList = this.stealthCheck(this.enemies, character);
         for(var i = 0; i < enemyList.length; i++) {
+            //TEST: this.messageUser(enemyList[i].toString());
             this.messageUser(enemyList[i].promptString());
         }
         if(reprompt) {
@@ -357,7 +379,7 @@ class Game {
         }
         var enemyToAttack = this.getUserInput("Which enemy would you like to attack?");
         var enemy = this.getEnemyByName(enemyToAttack);
-        if(enemy === -1) {
+        if(enemy === -1 || (enemy.conditions.isStealthed && !character.conditions.seesStealth)) {
             return this.promptForEnemy(1);
         }
         else {
@@ -370,19 +392,21 @@ class Game {
     This function will prompt the player for which enemies they want to attack and return an array of enemy objects
     Parameters:
         Number of Enemies: The number of enemies that the ability will hit
-        Reprompt: A boolean value to determine whether the player has already failed the prompt
+        Character: The character making an attack
         Enemies To Attack: An array of enemies that the ability will hit (default value is empty; used for reprompting)
     Returns:
         Enemies to Attack: An array of enemies that an attack will hit
     */
-    promptForEnemies(numEnemies, enemiesToAttack = []) {
-        if(numEnemies >= this.enemies.length) {
+    promptForEnemies(numEnemies, character, enemiesToAttack = []) {
+        console.log(character.toString());
+        var enemyList = this.stealthCheck(this.enemies, character);
+        if(numEnemies >= enemyList.length) {
             this.messageUser("This attack will attempt to hit all enemies.");
-            return this.enemies;
+            return enemyList;
         }
         while(numEnemies > 0) {
             this.messageUser("Please select an enemy to attack. You can attack " + numEnemies.toString() + " more enemies.");
-            var enemy = this.promptForEnemy(0);
+            var enemy = this.promptForEnemy(0, character);
             enemiesToAttack.push(enemy);
             numEnemies--;
         }
@@ -397,10 +421,10 @@ class Game {
     Returns:
         Ally: The ally to receive healing
     */
-    promptForAlly(reprompt) {
-        var enemyList = this.getEnemies();
-        for(var i = 0; i < enemyList.length; i++) {
-            this.messageUser(enemyList[i].promptString());
+    promptForAlly(reprompt, character) {
+        var allyList = this.stealthCheck(this.allies, character);
+        for(var i = 0; i < allyList.length; i++) {
+            this.messageUser(allyList[i].promptString());
         }
         switch(reprompt) {
             case 1:
@@ -414,16 +438,15 @@ class Game {
         }
         var allyToHeal = this.getUserInput("Which ally would you like to heal?");
         var ally = this.getAllyByName(allyToHeal);
-        if(ally === -1) {
-            return this.promptForAlly(1);
+        if(ally === -1 || (ally.conditions.isStealthed && !character.conditions.seesStealth)) {
+            return this.promptForAlly(1, character);
         }
-        for(var i = 0; i < ally.statusEffects.length; i++) {
-            if(this.getStatusEffectByName(ally.statusEffects[i].statusEffect).preventsIncomingHealing) {
-                return this.promptForAlly(2);
-            }
+        else if(!ally.conditions.canReceiveHealing) {
+            return this.promptForAlly(2, character);
         }
-        //This return statement only gets called when all necessary conditions are met
-        return ally;
+        else {
+            return ally;
+        }
     }
     
 
@@ -436,18 +459,37 @@ class Game {
     Returns:
         Allies: An array of allies that the player will attempt to heal
     */
-    promptForAllies(numAllies, alliesToHeal = []) {
-        if(numAllies >= this.enemies.length) {
+    promptForAllies(numAllies, character, alliesToHeal = []) {
+        var allyList = this.stealthCheck(this.allies, character);
+        if(numAllies >= allyList.length) {
             this.messageUser("This spell will attempt to heal all allies.");
-            return this.allies;
+            return allyList;
         }
         while(numAllies > 0) {
             this.messageUser("Please select an ally to heal. You can heal " + numAllies.toString() + " more allies.");
-            var ally = promptForAlly(0);
+            var ally = promptForAlly(0, character);
             alliesToHeal.push(ally);
             numAllies--;
         }
         return alliesToHeal;
+    }
+
+
+    /*
+    This function will check for stealth conditions and return the enemies or allies that the player can see
+    Parameters:
+        Array: The array denoting the types of characters the player is looking for
+        Character: The character that is attempting an action
+    Returns:
+        Array: A new array with all characters the character attempting an action can see
+    */
+    stealthCheck(array, character) {
+        if(character.conditions.seesStealth) {
+            return array;
+        }
+        else {
+            return array.filter(item => !item.conditions.isStealthed);
+        }
     }
 
 
@@ -459,9 +501,9 @@ class Game {
     Returns:
         Ability: Returns the ability if the player has it and it is in the game; otherwise reprompts
     */
-    promptForAbility(reprompt, player, statusEffects) {
+    promptForAbility(reprompt, player) {
         this.messageUser(player.abilities);
-        this.messageUser(statusEffects);
+        //TEST: this.messageUser(player.conditions);
         var abilityToUse;
         switch(reprompt) {
             case 1:
@@ -478,28 +520,30 @@ class Game {
                 break;
             case 5:
                 this.messageUser("Your character cannot use attacks on this turn. Please try again.");
+                break;
             default:
                 break;
         }
         abilityToUse = this.getUserInput("Which ability would you like to use?");
         const ability = this.getAbilityByName(abilityToUse);
         if(ability.modifier === 'wisdom' && !player.conditions.canMagicAttack) {
-            this.promptForAbility(2, player);
+            return this.promptForAbility(2, player);
         }
         else if(ability.modifier === 'strength' && !player.conditions.canPhysicalAttack) {
-            this.promptForAbility(3, player);
+            return this.promptForAbility(3, player);
         }
         else if(ability.targetType === 'ally' && !player.conditions.canGiveHealing) {
-            this.promptForAbility(4, player);
+            return this.promptForAbility(4, player);
         }
-        else if(ability.targetType === 'enemy' && !player.canAttack) {
-            this.promptForAbility(5, player);
+        else if(ability.targetType === 'enemy' && !player.conditions.canAttack) {
+            return this.promptForAbility(5, player);
         }
         else if(ability !== -1 && player.abilities.includes(abilityToUse)) {
+            //TEST: console.log("Before: " + ability.toString());
             return ability;
         }
         else {
-            this.promptForAbility(1, player);
+            return this.promptForAbility(1, player);
         }
     }
 
@@ -600,6 +644,7 @@ class Game {
         else {
             return 0;
         }
+        damage = parseInt(damage);
         return damage;
     }
 
@@ -614,7 +659,7 @@ class Game {
         Integer: Amount of healing given
     */
     calculateHealing(player, ally, ability) {
-        return ((player.stats.wisdom * ability.multiplier) / (ally.stats.currentHealth / ally.stats.maxHealth));
+        return parseInt((player.stats.wisdom * ability.multiplier) / (ally.stats.currentHealth / ally.stats.maxHealth));
     }
 
 
@@ -632,6 +677,19 @@ class Game {
             damage *= 2;
         }
         return damage;
+    }
+
+
+    /*
+    This function calculates a random number between min and max (inclusive on both ends)
+    Parameters:
+        Min: The minimum number we want the random result to be
+        Max: The maximum number we want the random result to be
+    Returns:
+        Int: A random integer between min and max
+    */
+    calculateRandom(min, max) {
+        return Math.floor(Math.random() * (max - min + 1)) + min;
     }
 
 
@@ -706,8 +764,8 @@ class Game {
     }
 
 
-    addStatusEffect(name, effect, endsTurn = 0, preventsMagicAttacks = 0, preventsPhysicalAttacks = 0, preventsIncomingHealing = 0, preventsOutgoingHealing = 0, magicAttackReduction = 0, physicalAttackReduction = 0, damagePerRound = 0, statsReduced = [], percentReducedBy = []) {
-        this.statusEffects.push(new StatusEffect(name, effect, endsTurn, preventsMagicAttacks, preventsPhysicalAttacks, preventsIncomingHealing, preventsOutgoingHealing, magicAttackReduction, physicalAttackReduction, damagePerRound, statsReduced, percentReducedBy));
+    addStatusEffect(name, effect, endsTurn = 0, preventsAttacks = 0, preventsMagicAttacks = 0, preventsPhysicalAttacks = 0, preventsIncomingHealing = 0, preventsOutgoingHealing = 0, revealsStealth = 0, magicAttackReduction = 0, physicalAttackReduction = 0, damagePerRound = 0, statsReduced = [], percentReducedBy = []) {
+        this.statusEffects.push(new StatusEffect(name, effect, endsTurn, preventsAttacks, preventsMagicAttacks, preventsPhysicalAttacks, preventsIncomingHealing, preventsOutgoingHealing, revealsStealth, magicAttackReduction, physicalAttackReduction, damagePerRound, statsReduced, percentReducedBy));
     }
 
     addAbility(name, statusEffect, chance, duration, targetType, numTargets, accuracy, modifier, multiplier) {
@@ -749,26 +807,31 @@ var myGame = new Game([],[],[],[],[]);
 
 //Functional status effects
 myGame.addStatusEffect("stunned", "Stunned characters lose their turn", 1);
-myGame.addStatusEffect("silenced", "Silenced characters cannot use magic on their turn", 0, 1);
-myGame.addStatusEffect("immobilized", "Immobilized characters cannot use physical attacks on their turn.", 0, 0, 1);
-myGame.addStatusEffect("taunted", "Taunted characters will only use physical attacks on the character that taunted them", 0, 1);
-myGame.addStatusEffect("bleeding", "Bleeding characters will take damage at the end of each turn rotation", 0, 0, 0, 0, 0, 0, 0, 1);
-myGame.addStatusEffect("hopeless", "Hopeless characters will refuse healing from allies", 0, 0, 0, 1);
-myGame.addStatusEffect("selfish", "Selfish characters will not cast any spells on their allies", 0, 0, 0, 0, 1);
+myGame.addStatusEffect("harmless", "Harmless characters cannot use any attacks.", 0, 1);
+myGame.addStatusEffect("silenced", "Silenced characters cannot use magic on their turn", 0, 0, 1);
+myGame.addStatusEffect("immobilized", "Immobilized characters cannot use physical attacks on their turn.", 0, 0, 0, 1);
+myGame.addStatusEffect("hopeless", "Hopeless characters will refuse healing from allies", 0, 0, 0, 0, 1);
+myGame.addStatusEffect("selfish", "Selfish characters will not cast any spells on their allies", 0, 0, 0, 0, 0, 1);
+
+
+
 
 //Damage reduction status effects
-myGame.addStatusEffect("disarmed", "Disarmed characters have their physical damage reduced by 25%", 0, 0, 0, 0, 0, 0, .25);
-myGame.addStatusEffect("unfocused", "Unfocused characters have their magic damage reduced by 25%", 0, 0, 0, 0, 0, .25);
+myGame.addStatusEffect("unfocused", "Unfocused characters have their magic damage reduced by 25%", 0, 0, 0, 0, 0, 0, 0, 25);
+myGame.addStatusEffect("disarmed", "Disarmed characters have their physical damage reduced by 25%", 0, 0, 0, 0, 0, 0, 0, 0, 25);
 
 //Stat status effects
-myGame.addStatusEffect("weakened", "Weakened characters have their strength reduced by 50%", 0, 0, 0, 0, 0, 0, 0, 0, [{ statReduced: "strength", reducedBy: .50 }]);
-myGame.addStatusEffect("exposed", "Exposed characters have their defense reduced by 50%", 0, 0, 0, 0, 0, 0, 0, 0, [{ statReduced: "defense", reducedBy: .50 }]);
-myGame.addStatusEffect("confused", "Confused characters have their wisdom reduced by 50%", 0, 0, 0, 0, 0, 0, 0, 0, [{ statReduced: "wisdom", reducedBy: .50 }]);
-myGame.addStatusEffect("intimidated", "Intimidated characters have their resilience reduced by 50%", 0, 0, 0, 0, 0, 0, 0, 0, [{ statReduced: "resilience", reducedBy: .50 }]);
-myGame.addStatusEffect("dazed", "Dazed characters have their dexterity reduced by 50%", 0, 0, 0, 0, 0, 0, 0, 0, [{ statReduced: "dexterity", reducedBy: .50 }]);
-myGame.addStatusEffect("surrounded", "Surrounded characters have their evasion reduced by 50%", 0, 0, 0, 0, 0, 0, 0, 0, [{ statReduced: "evasion", reducedBy: .50 }]);
-myGame.addStatusEffect("cursed", "Cursed opponents have their luck reduced by 50%", 0, 0, 0, 0, 0, 0, 0, 0, [{ statReduced: "luck", reducedBy: .50 }]);
-myGame.addStatusEffect("slowed", "Slowed characters have their speed reduced by 50%", 0, 0, 0, 0, 0, 0, 0, 0, [{ statReduced: "speed", reducedBy: .50 }]);
+myGame.addStatusEffect("weakened", "Weakened characters have their strength reduced by 50%", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, [{ statReduced: "strength", reducedBy: 50 }]);
+myGame.addStatusEffect("exposed", "Exposed characters have their defense reduced by 50%", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, [{ statReduced: "defense", reducedBy: 50 }]);
+myGame.addStatusEffect("confused", "Confused characters have their wisdom reduced by 50%", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, [{ statReduced: "wisdom", reducedBy: 50 }]);
+myGame.addStatusEffect("intimidated", "Intimidated characters have their resilience reduced by 50%", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, [{ statReduced: "resilience", reducedBy: 50 }]);
+myGame.addStatusEffect("dazed", "Dazed characters have their dexterity reduced by 50%", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, [{ statReduced: "dexterity", reducedBy: 50 }]);
+myGame.addStatusEffect("surrounded", "Surrounded characters have their evasion reduced by 50%", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, [{ statReduced: "evasion", reducedBy: 50 }]);
+myGame.addStatusEffect("cursed", "Cursed opponents have their luck reduced by 50%", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,[{ statReduced: "luck", reducedBy: 50 }]);
+myGame.addStatusEffect("slowed", "Slowed characters have their speed reduced by 50%", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, [{ statReduced: "speed", reducedBy: 50 }]);
+
+//Damage status effect
+myGame.addStatusEffect("bleeding", "Bleeding characters will take damage at the end of each turn rotation", 0, 0, 0, 0, 0, 0, 0, 0, 0, 1);
 
 //Base status effect (for abilities, not characters)
 myGame.addStatusEffect("none", "Abilities with no status effect behave as normal");
@@ -800,5 +863,9 @@ myGame.addPlayer("Jonka", ["Sweep", "Slice", "Minor Group Heal", "Minor Arcane B
 myGame.addEnemy("Jonku", ["Punch","Minor Arcana Beam", "Slice", "Minor Heal"], 1, 1, 1, 1, 1, 1, 1, 1, 1, 36, []);
 myGame.addEnemy("Jonky", ["Minor Group Heal", "Minor Arcane Beam", "Sweep"], 14, 1, 1, 2, 1, 1, 8, 8, 2, 11, []);
 
-console.log(myGame.getPlayerByName("Jonka").statReductionCalculation(75, 50));
-//myGame.playGame();
+var Jonka = myGame.getPlayerByName("Jonka");
+myGame.initStatusEffects(Jonka);
+for(var i = 0; i < 5; i++) {
+    console.log(Jonka);
+    myGame.statusEffectCheck(Jonka);
+}
