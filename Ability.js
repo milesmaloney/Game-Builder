@@ -21,6 +21,10 @@ class Ability {
         this.modifier = modifier;
         this.multiplier = multiplier;
     }
+
+    toString() {
+        return "Ability: " + this.name + "\n\tStatus Effect: " + this.statusEffect + "\n\t\tChance of Applying: " + this.chance + "\n\t\tDuration: " + this.duration + "\n\tTarget Type: " + this.targetType + "\n\tNumber of Targets: " + this.numTargets + "\n\tAccuracy: " + this.accuracy + "\n\tModifier: " + this.modifier + "\n\tMultiplier: " + this.multiplier; 
+    }
 }
 
 module.exports = Ability
