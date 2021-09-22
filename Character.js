@@ -120,12 +120,12 @@ class Character {
         None; updates the characters conditions based on the remaining status effects
     */
     removeStatusEffects(game) {
-        var booleanConditions = [0, 0, 0, 0, 0, 0, 0]
+        var booleanConditions = [0, 0, 0, 0, 0, 0, 0];
         for(var i = 0; i < this.statusEffects.length; i++) {
             var statusEffect = game.getStatusEffectByName(this.statusEffects[i].statusEffect);
             this.statusEffects[i].duration--;
             if(this.statusEffects[i].duration === 0) {  
-                console.log(this.name + " is no longer " + statusEffect.name);
+                console.log(this.name + " is no longer " + statusEffect.name + "!");
                 if(statusEffect.magicAttackReduction !== 0) {
                     this.conditions.magicAttackChange += statusEffect.magicAttackReduction;
                 }
@@ -167,7 +167,7 @@ class Character {
                 }
             }
         }
-        console.log("boolean conditions: " + booleanConditions);
+        //TEST: console.log("boolean conditions: " + booleanConditions);
         //Goes through boolean conditions array to determine character's status conditions
         if(!booleanConditions[0]) {
             this.conditions.hasTurn = 1;
@@ -314,7 +314,7 @@ class Character {
 
 
     toString() {
-        return ("Character: " + this.name + "\n\tStrength: " + this.stats.strength.toString() + "\n\tDefense: " + this.stats.defense.toString() + "\n\tWisdom: " + this.stats.wisdom.toString() + "\n\tResilience: " + this.stats.resilience.toString() + "\n\tDexterity: " + this.stats.dexterity.toString() + "\n\tEvasion: " + this.stats.evasion.toString() + "\n\tMax Health: " + this.stats.maxHealth.toString() + "\n\tCurrent Health: " + this.stats.currentHealth.toString() + "\n\tLuck: " + this.stats.currentHealth.toString() + "\n\tSpeed: " + this.stats.speed.toString());
+        return ("Character: " + this.name + "\n\tStrength: " + this.stats.strength.toString() + "\n\tDefense: " + this.stats.defense.toString() + "\n\tWisdom: " + this.stats.wisdom.toString() + "\n\tResilience: " + this.stats.resilience.toString() + "\n\tDexterity: " + this.stats.dexterity.toString() + "\n\tEvasion: " + this.stats.evasion.toString() + "\n\tMax Health: " + this.stats.maxHealth.toString() + "\n\tCurrent Health: " + this.stats.currentHealth.toString() + "\n\tLuck: " + this.stats.currentHealth.toString() + "\n\tSpeed: " + this.stats.speed.toString() + "\n");
     }
 
     promptString() {
