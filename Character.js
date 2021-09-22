@@ -2,16 +2,27 @@
 Character attributes and their effects:
     Name: The name of the character
     Abilities: The abilities the character has
-    Strength: The physical attack stat for the character
-    Defense: The physical defense stat for the character
-    Wisdom: The magic attack stat for the character
-    Resilience: The magic defense stat for the character
-    Dexterity: The hit chance stat for the character
-    Evasion: The dodge chance stat for the character
-    Max Health: The total amount of health the character can have
-    Current Health: The current amount of health the character has
-    Luck: The crit chance stat for the character
-    Speed: The speed stat for the character (when in the turn the character will attack)
+    Stats:
+        Strength: The physical attack stat for the character (0 to 99)
+            Increases character physical attack damage by strength %
+        Defense: The physical defense stat for the character (0 to 99)
+            Reduces enemy physical attack damage to this character by defense %
+        Wisdom: The magic attack stat for the character (0 to 99)
+            Increases character magic attack damage by wisdom %
+        Resilience: The magic defense stat for the character (0 to 99)
+            Reduces enemy magic attack damage to this character by resilience %
+        Dexterity: The hit chance stat for the character (0 to 99)
+            Increases the chance of hitting an enemy by dexterity %
+        Evasion: The dodge chance stat for the character (0 to 99)
+            Reduces the chance of being hit by an enemy by evasion %
+        Max Health: The total amount of health the character can have (0 to 1000)
+            Denotes the maximum amount of hp the character can have
+        Current Health: The current amount of health the character has (0 to 1000)
+            Denotes the current amount of hp the character has
+        Luck: The crit chance stat for the character (0 to 99)
+            Increases the chance that the character will land a critical hit
+        Speed: The speed stat for the character (0 to 1000)
+            Increases the chance that the character will appear sooner in the turn order
     Status Effects: A list of status effects alongside their durations [[statusEffect, duration], [statusEffect, duration]]
     Conditions: A list of conditions and whether they are currently affecting the character:
         hasTurn: returns true if the character has its turn, false if it doesn't
@@ -73,7 +84,13 @@ class Character {
         }
     }
 
-
+    /*
+    This function applies a status effect to this character
+    Parameters:
+        Status effect: a StatusEffect object to be applied to the character
+    Returns:
+        None; the conditions property will be filled by the properties of the status effect
+    */
     applyStatusEffect(statusEffect) {
         //TEST: console.log(statusEffect);
         if(statusEffect.endsTurn) {
@@ -125,7 +142,7 @@ class Character {
             var statusEffect = game.getStatusEffectByName(this.statusEffects[i].statusEffect);
             this.statusEffects[i].duration--;
             if(this.statusEffects[i].duration === 0) {  
-                console.log(this.name + " is no longer " + statusEffect.name + "!");
+                game.messageUser(this.name + " is no longer " + statusEffect.name + "!");
                 if(statusEffect.magicAttackReduction !== 0) {
                     this.conditions.magicAttackChange += statusEffect.magicAttackReduction;
                 }
@@ -318,7 +335,7 @@ class Character {
     }
 
     promptString() {
-        return "Name: " + this.name + "\nHealth: " + this.stats.currentHealth;
+        return "Name: " + this.name + " Health: " + this.stats.currentHealth;
     }
 }
 

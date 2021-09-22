@@ -68,7 +68,7 @@ class Game {
             if(this.gameOverCheck()) {
                 break;
             }
-            this.messageUser("It is " + turnOrder[i].name + "'s turn.");
+            this.messageUser("It is " + turnOrder[i].name + "'s turn:", 1);
             //Checks if character is dead
             if(this.deathCheck(turnOrder[i])) {
                 continue;
@@ -86,7 +86,6 @@ class Game {
             }
             //TEST: console.log("Passed turn check.");
             //Executes player's turn
-            this.messageUser(turnOrder[i].name + "'s turn starting...");
             if(turnOrder[i].type === "player") {
                 this.takePlayerTurn(turnOrder[i]);
             }
@@ -236,7 +235,11 @@ class Game {
     takePlayerTurn(player) {
         //TEST: console.log(player);
         //TEST: console.log(statusEffects);
+        this.getGameStatus();
         const ability = this.promptForAbility(0, player);
+        if(ability === -1) {
+            return;
+        }
         //TEST: console.log("After:" + ability);
         switch(ability.targetType) {
             case 'enemy':
@@ -259,11 +262,11 @@ class Game {
         results
     */
     takeEnemyTurn(enemy) {
-        var ability = this.getAbilityByName(enemy.abilities[this.calculateRandom(0, enemy.abilities.length - 1)]);
-        if(ability === -1) {
-            console.log("ERROR: Ability could not be found.");
+        var availableAbilities = this.getAvailableAbilities(enemy);
+        if(availableAbilities === -1) {
             return;
         }
+        var ability = availableAbilities[this.calculateRandom(0, availableAbilities.length - 1)];
         this.messageUser(enemy.name + " is using " + ability.name + ".");
         var numTargets = ability.numTargets;
         var availableTargets = [];
@@ -305,11 +308,11 @@ class Game {
         None: selects a random ability and modifies properties of characters based on the result of the ability's execution
     */
     takeAllyTurn(ally) {
-        var ability = this.getAbilityByName(ally.abilities[this.calculateRandom(0, ally.abilities.length - 1)]);
-        if(ability === -1) {
-            console.log("ERROR: Ability could not be found.");
+        var availableAbilities = this.getAvailableAbilities(ally);
+        if(availableAbilities === -1) {
             return;
         }
+        var ability = availableAbilities[this.calculateRandom(0, availableAbilities.length - 1)];
         this.messageUser(ally.name + " is using " + ability.name + ".");
         var numTargets = ability.numTargets;
         var availableTargets = [];
@@ -362,7 +365,7 @@ class Game {
         for(var i = 0; i < enemies.length; i++) {
             //Checks whether the attack hits or misses
             if(!this.calculateHitOrMissDamage(character, enemies[i], ability)) {
-                return;
+                continue;
             }
             if(this.calculateStatusEffect(ability)) {
                 enemies[i].statusEffects.push({ statusEffect: ability.statusEffect, duration: ability.duration });
@@ -392,9 +395,9 @@ class Game {
         //TEST: console.log(allies);
         for(var i = 0; i < allies.length; i++) {
             if(!this.calculateHitOrMissHealing(character, allies[i], ability)) {
-                return;
+                continue;
             }
-            var healing = this.calculateHealing(character, allies[i], ability);
+            var healing = this.calculateHealing(character, ability);
             this.executeHealing(character, allies[i], healing);
         }
     }
@@ -622,7 +625,14 @@ class Game {
         Ability: Returns the ability if the player has it and it is in the game; otherwise reprompts
     */
     promptForAbility(reprompt, player) {
-        this.messageUser(player.abilities);
+        var availableAbilities = this.getAvailableAbilities(player);
+        if(availableAbilities === -1) {
+            return -1;
+        }
+        this.messageUser("The following abilities can be used on this turn:");
+        for( var i = 0; i < availableAbilities.length; i++) {
+            this.messageUser(availableAbilities[i].name, 3);
+        }
         //TEST: this.messageUser(player.conditions);
         var abilityToUse;
         switch(reprompt) {
@@ -695,13 +705,14 @@ class Game {
         Boolean: True if the attack hits, false if the attack misses
     */
     calculateHitOrMissDamage(character, enemy, ability) {
-        if(((ability.accuracy * character.stats.dexterity) / enemy.stats.evasion) * Math.random() < 0.30) {
-            this.messageUser(character.name + "'s " + ability.name + " attack has missed " + enemy.name + "!");
-            return 0;
-        }
-        else {
+        //75% chance * dex:evasion ratio * accuracy% (chance of 0 left in as a potential edge case)
+        if(this.calculateRandom(0, 100) * (character.stats.dexterity / enemy.stats.evasion) *  (ability.accuracy / 100) > 25) {
             this.messageUser(character.name + " has hit " + enemy.name + " with " + ability.name + "!");
             return 1;
+        }
+        else {
+            this.messageUser(character.name + "'s " + ability.name + " attack has missed " + enemy.name + "!");
+            return 0;
         }
     }
 
@@ -716,13 +727,14 @@ class Game {
         Boolean: True if the healing is received, false if the healing fails
     */
     calculateHitOrMissHealing(character, ally, ability) {
-        if(((ability.accuracy * character.stats.dexterity) / (ally.stats.currentHealth / ally.stats.maxHealth)) * Math.random() < 0.40) {
-            this.messageUser(character.name + "'s " + ability.name + " has missed " + ally.name + "!");
-            return 0;
-        }
-        else {
+        //80% chance * ally % missing hp * accuracy%
+        if(this.calculateRandom(0, 100) * ((ally.stats.maxHealth - ally.stats.currentHealth) / ally.stats.maxHealth) * ability.accuracy > 20) {
             this.messageUser(character.name + " healed " + ally.name + " with " + ability.name + "!");
             return 1;
+        }
+        else {
+            this.messageUser(character.name + "'s " + ability.name + " has missed " + ally.name + "!");
+            return 0;
         }
     }
 
@@ -736,7 +748,7 @@ class Game {
     */
     calculateStatusEffect(ability) {
         if(ability.statusEffect != "none") {
-            if(Math.random() < ability.chance) {
+            if(ability.chance > this.calculateRandom(1, 100)) {
                 /*This means the status effect hits*/
                 this.messageUser(ability.statusEffect.toString() + " applied!");
                 return 1;
@@ -756,12 +768,14 @@ class Game {
         Damage: A number denoting the amount of damage that is dealt
     */
     calculateDamage(character, enemy, ability) {
-        let damage;
+        var damage;
+        //ability multiplier * strength:defense ratio * strength
         if(ability.modifier === "strength") {
-            damage = (character.stats.strength * ability.multiplier) / (enemy.stats.defense * 0.1);
+            damage = ability.multiplier * (character.stats.strength / enemy.stats.defense) * character.stats.strength;
         }
+        //ability multiplier * wisdom:resilience ratio * wisdom
         else if(ability.modifier === "magic") {
-            damage = (character.stats.wisdom * ability.multiplier) / (enemy.stats.resilience * 0.1);
+            damage = ability.multiplier * (character.stats.wisdom / enemy.stats.resilience) * character.stats.wisdom;
         }
         else {
             return 0;
@@ -780,8 +794,8 @@ class Game {
     Returns:
         Integer: Amount of healing given
     */
-    calculateHealing(character, ally, ability) {
-        let healing = (character.stats.wisdom * ability.multiplier) / (ally.stats.currentHealth / ally.stats.maxHealth);
+    calculateHealing(character, ability) {
+        var healing = (character.stats.wisdom * ability.multiplier);
         healing = parseInt(this.calculateCrit(character, healing));
         return healing;
     }
@@ -796,7 +810,8 @@ class Game {
         Value: The damage or healing after calculating the crit
     */
     calculateCrit(character, value) {
-        if(character.luck * Math.random() > .8) {
+        //15% + luck chance
+        if(character.stats.luck + this.calculateRandom(0, 100) > 85) {
             this.messageUser("Critical Hit!");
             value *= 2;
         }
@@ -920,15 +935,60 @@ class Game {
         this.enemies.push(enemy);
     }
 
-    messageUser(message, tabbed = 1) {
-        if(tabbed) {
-            console.log("\t" + message);
+    messageUser(message, tabbed = 2) {
+        var tabString = "";
+        for(var i = 0; i < tabbed; i++) {
+            tabString += "\t";
+        }
+        console.log(tabString + message);
+    }
+
+    getGameStatus() {
+        this.messageUser("Players:");
+        for(var i = 0; i < this.players.length; i++) {
+            this.messageUser(this.players[i].promptString(), 3);
+        }
+        this.messageUser("Allies:");
+        for(var i = 0; i < this.allies.length; i++) {
+            this.messageUser(this.allies[i].promptString(), 3);
+        }
+        this.messageUser("Enemies:");
+        for(var i = 0; i < this.enemies.length; i++) {
+            this.messageUser(this.enemies[i].promptString(), 3);
+        }
+    }
+
+
+    getAvailableAbilities(character) {
+        var availableAbilities = [];
+        for(var i = 0; i < character.abilities.length; i++) {
+            var currAbility = this.getAbilityByName(character.abilities[i]);
+            if(!character.conditions.canAttack && currAbility.targetType === 'enemy') {
+                continue;
+            }
+            else if(!character.conditions.canPhysicalAttack && currAbility.targetType === 'enemy' && currAbility.modifier === 'strength') {
+                continue;
+            }
+            else if(!character.conditions.canMagicAttack && currAbility.targetType ===  'enemy' && currAbility.modifier === 'wisdom') {
+                continue;
+            }
+            else if(!character.conditions.canGiveHealing && currAbility.targetType === 'ally') {
+                continue;
+            }
+            else {
+                availableAbilities.push(currAbility);
+            }
+        }
+        if(availableAbilities.length === 0) {
+            this.messageUser(character.name + " cannot use any abilities on this turn. Continuing to next turn...");
+            return -1;
         }
         else {
-            console.log(message);
+            return availableAbilities;
         }
-
     }
+
+
 }
 
 /*Creates a new empty game */
@@ -966,9 +1026,9 @@ myGame.addStatusEffect("bleeding", "Bleeding characters will take damage at the 
 //Base status effect (for abilities, not characters)
 myGame.addStatusEffect("none", "Abilities with no status effect behave as normal");
 
-//Initialize abilities (12 targets = all targets)
+//Initialize abilities (100 targets = all targets)
 //Single Target Physical Attacks
-myGame.addAbility("Slice", "bleeding", 0.33, 1, "enemy", 1, 90, "strength", 0.66);
+myGame.addAbility("Slice", "bleeding", 33, 1, "enemy", 1, 90, "strength", 0.66);
 myGame.addAbility("Punch", "none", 0, 0, "enemy", 1, 100, "strength", 1.0);
 
 //Multi Target Physical Attacks
@@ -987,13 +1047,13 @@ myGame.addAbility("Minor Arcane Beam", "none", 0, 0, "enemy", 1, 80, "wisdom", 1
 myGame.addAbility("Minor Arcane Barrage", "none", 0, 0, "enemy", 12, 70, "wisdom", 0.4);
 
 //Initialize Players
-myGame.addPlayer("Player 1", [ "Slice", "Sweep", "Minor Heal", "Minor Group Heal", "Minor Arcane Beam", "Minor Arcane Barrage"], 3, 1, 5, 2, 3, 5, 12, 12, 2, 50, [{ statusEffect: "stunned", duration: 3 }, { statusEffect: "silenced", duration: 4 }, { statusEffect: "slowed", duration: 2 }, { statusEffect: "disarmed", duration: 5 }]);
+myGame.addPlayer("Player 1", [ "Slice", "Sweep", "Minor Heal", "Minor Group Heal", "Minor Arcane Beam", "Minor Arcane Barrage"], 5, 5, 5, 5, 5, 5, 25, 25, 5, 50, []);
 
 //Initialize Allies
-myGame.addAlly("Ally 1", [ "Minor Heal", "Minor Arcane Beam" ], 1, 2, 5, 4, 3, 1, 10, 10, 4, 25, []);
+myGame.addAlly("Ally 1", [ "Minor Heal", "Minor Arcane Beam" ], 5, 5, 5, 5, 5, 5, 25, 25, 5, 50, []);
 
 //Initialize Enemies
-myGame.addEnemy("Enemy 1", ["Punch","Minor Arcana Beam", "Slice", "Minor Heal"], 1, 1, 1, 1, 1, 1, 1, 1, 1, 36, []);
-myGame.addEnemy("Enemy 2", ["Minor Group Heal", "Minor Arcane Beam", "Sweep"], 14, 1, 1, 2, 1, 1, 8, 8, 2, 11, []);
+myGame.addEnemy("Enemy 1", ["Punch","Minor Arcane Beam", "Slice", "Minor Heal"], 5, 5, 5, 5, 5, 5, 25, 25, 5, 50, []);
+myGame.addEnemy("Enemy 2", ["Minor Group Heal", "Minor Arcane Beam", "Sweep"], 5, 5, 5, 5, 5, 5, 25, 25, 5, 50, []);
 
 myGame.playGame();
