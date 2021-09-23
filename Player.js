@@ -21,105 +21,85 @@ class Player extends Character {
     constructor(name, abilities, strength, defense, wisdom, resilience, dexterity, evasion, maxHealth, currentHealth, luck, speed, statusEffects) {
         super(name, abilities, strength, defense, wisdom, resilience, dexterity, evasion,maxHealth, currentHealth, luck, speed, statusEffects);
         this.type = 'player';
+        this.level = 1;
+    }
+
+    /*
+    This function handles the initialization of a player character
+    Parameters:
+        Game: The game the player is being added to.
+    Returns:
+        None; The player will be added to the game specified in parameters.
+    */
+    initializePlayer(game) {
+        var name = game.getUserInput("What would you like to name your character?");
+        game.addPlayer(name, ["Punch", "Minor Heal", "Minor Arcane Beam"], 5, 3, 5, 3, 5, 3, 10, 10, 0, 25, []);
+    }
+
+    /*
+    This function handles a player leveling up
+    Parameters:
+        Game: The game the player is leveling up in (necessary for getUserInput)
+    Returns:
+        None; mutates player stats based on the stat increases requested
+    */
+    levelUpPlayer(game) {
+        var numStatIncreases = parseInt(this.level * .5);
+        while(numStatIncreases > 0) {
+            console.log(this.stats);
+            var stat = game.getUserInput("Which stat would you like to increase? You can increase " + numStatIncreases + " more stats.");
+            var statIncrease = this.increaseStat(stat);
+            while(statIncrease === -1) {
+                game.messageUser("That stat doesn't exist! Please try again.");
+                var stat = game.getUserInput("Which stat would you like to increase? You can increase " + numStatIncreases + " more stats.");
+                var statIncrease = this.increaseStat(stat);
+            }
+            game.messageUser("Your " + stat + " stat has increased by " + statIncrease + "!");
+        }
+        this.stats.currentHealth = this.stats.maxHealth;
+    }
+
+    /*
+    This function increases a player's stat
+    Parameters:
+        Stat: The stat to be increased
+    Returns:
+        Integer: The amount the stat was increased by (or -1 if stat wasn't found)
+    */
+    increaseStat(stat) {
+        switch(stat) {
+            case 'strength':
+                this.stats.strength += 1;
+                return 1;
+            case 'wisdom':
+                this.stats.strength += 1;
+                return 1;
+            case 'defense':
+                this.stats.defense += 1;
+                return 1;
+            case 'resilience':
+                this.stats.resilience += 1;
+                return 1;
+            case 'dexterity':
+                this.stats.dexterity += 1;
+                return 1;
+            case 'evasion':
+                this.stats.evasion += 1;
+                return 1;
+            case 'maxHealth':
+                this.stats.maxHealth += 5;
+                return 5;
+            case 'luck':
+                this.stats.luck += 2;
+                return 2;
+            case 'speed':
+                this.stats.speed += 5;
+                return 5;
+            //Stat not found
+            default:
+                return -1;
+        }
     }
 }
 
 module.exports = Player
-
-/*
-Many things need to be considered when taking a turn:
-    Ability:
-        *The ability being used
-        The type of enemy and number of enemies the ability hits
-        *The status effect the ability inflicts
-        *The accuracy of the ability
-    Stats:
-        *The modifier (strength or magic) of the ability
-        *The multiplier of the ability
-        *The attacker's modifier value
-        *The defender's defense value for the modifier
-        *The attacker's dexterity
-        *The defender's evasion
-        *The attacker's luck
-*/    
-/*I'm going to go a different direction with this: I think taking the turn from the player object was a bad idea (this was mostly moved to the Game class)
-takeTurn(game) {
-        const ability = this.promptForAbility(game);
-        while(ability === -1) { 
-            console.log("Sorry, we couldn't find that ability. Please try again.");
-            ability = this.promptForAbility(game);
-        }
-        /*Ability successfully received*/
-/*        if(ability.targetType === 'enemy') {
-            if(ability.numTargets > 1) {
-                /*TODO: have users select enemies into an array, create function for calculating each individual damage, evasion, etc.*/
-/*            }
-            else {
-                const enemy = this.promptForEnemy(game);
-                while(enemy === -1) {
-                    console.log("Sorry, we couldn't find that enemy. Please try again.");
-                    enemy = this.promptForEnemy(game);
-                }
-                /*Ability + Enemy successfully received*/
-/*               if(((ability.accuracy * this.dexterity) / enemy.evasion) * Math.random() < 0.30) {
-                    console.log("Ability missed.");
-                    return;
-                }
-                /*Ability + Enemy + Hit successfully received*/
-/*                if(ability.statusEffect != "none") {
-                    if(Math.random() < ability.chance) {
-                        /*This means the status effect hits*/
-/*                        enemy.statusEffects.append([ability.statusEffect,ability.duration])
-                    }
-                }
-                /*Ability + Enemy + Hit + Status Effect successfully received*/
-/*                let damage = 0;
-                if(ability.modifier === "strength") {
-                    damage = (this.strength * ability.multiplier) / (enemy.defense * 0.1);
-                }
-                if(ability.modifier === "magic") {
-                    damage = (this.wisdom * ability.multiplier) / (enemy.resilience * 0.1);
-
-                }
-                /*Ability + Enemy + Hit + Status Effect + Damage successfully received*/
-/*                if(this.luck * Math.random() > 0.7) {
-                    damage *= 2;
-                }
-            }
-        }
-        else if(ability.targetType === 'ally') {
-        }
-        else {
-            console.log("Invalid ability targetting type. Please try again or use a different ability.");
-        }
-    }
-*/
-    /*This function will prompt the player for which ability they want to use and return the ability object*/
-/*    promptForAbility(game) {
-        console.log(this.abilities);
-        var abilityToUse = window.prompt("Which ability would you like to use?");
-        return game.getAbilityByName(abilityToUse);
-    }
-
-    /*This function will prompt the player for which enemy (singular) they want to attack and return the enemy object*/
- /*   promptForEnemy(game) {
-        console.log(game.getEnemies);
-        var enemyToAttack = window.prompt("Which enemy would you like to attack?");
-        return game.getEnemyByName(enemyToAttack)
-    }
-
-    /*This function will prompt the player for which enemies they want to attack and return an array of enemy objects*/
-/*    promptForEnemies(game, numEnemies) {
-        console.log(game.getEnemies);
-        let enemiesToAttack = [];
-        for(var i = 0; i < numEnemies; i++) {
-            var enemyToAttack = window.prompt("Please select an enemy to attack. You can attack " + String(numEnemies - enemiesToAttack.length) + " more enemies.");
-            var enemy = game.getEnemyByName(enemyToAttack);
-            while(enemy === -1) {
-                console.log("Failed to get the entered enemy. Please try again.");
-                var enemyToAttack = window.prompt("Please select an enemy to attack. You can attack " + String(numEnemies - enemiesToAttack.length) + " more enemies.");
-                var enemy = game.getEnemyByName(enemyToAttack);
-            }
-        }
-    }
-*/

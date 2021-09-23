@@ -601,7 +601,7 @@ class Game {
         Allies: An array of allies that the player will attempt to heal
     */
     promptForAllies(numAllies, character, alliesToHeal = []) {
-        var allyList = this.stealthCheck(this.allies, character);
+        var allyList = this.stealthCheck(this.allies.concat(this.players), character);
         if(numAllies >= allyList.length) {
             this.messageUser("This spell will attempt to heal all allies.");
             return allyList;
@@ -774,7 +774,7 @@ class Game {
             damage = ability.multiplier * (character.stats.strength / enemy.stats.defense) * character.stats.strength;
         }
         //ability multiplier * wisdom:resilience ratio * wisdom
-        else if(ability.modifier === "magic") {
+        else if(ability.modifier === "wisdom") {
             damage = ability.multiplier * (character.stats.wisdom / enemy.stats.resilience) * character.stats.wisdom;
         }
         else {
