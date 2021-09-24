@@ -1,4 +1,5 @@
 var Character = require('./Character.js');
+var UI = require('./UI.js');
 
 /*
 Player attributes and their effects:
@@ -32,7 +33,7 @@ class Player extends Character {
         None; The player will be added to the game specified in parameters.
     */
     initializePlayer(game) {
-        var name = game.getUserInput("What would you like to name your character?");
+        var name = UI.getUserInput("What would you like to name your character?");
         game.addPlayer(name, ["Punch", "Minor Heal", "Minor Arcane Beam"], 5, 3, 5, 3, 5, 3, 10, 10, 0, 25, []);
     }
 
@@ -46,15 +47,15 @@ class Player extends Character {
     levelUpPlayer(game) {
         var numStatIncreases = parseInt(this.level * .5);
         while(numStatIncreases > 0) {
-            console.log(this.stats);
-            var stat = game.getUserInput("Which stat would you like to increase? You can increase " + numStatIncreases + " more stats.");
+            //TEST: console.log(this.stats);
+            var stat = UI.getUserInput("Which stat would you like to increase? You can increase " + numStatIncreases + " more stats.");
             var statIncrease = this.increaseStat(stat);
             while(statIncrease === -1) {
-                game.messageUser("That stat doesn't exist! Please try again.");
-                var stat = game.getUserInput("Which stat would you like to increase? You can increase " + numStatIncreases + " more stats.");
+                UI.messageUser("That stat doesn't exist! Please try again.");
+                var stat = UI.getUserInput("Which stat would you like to increase? You can increase " + numStatIncreases + " more stats.");
                 var statIncrease = this.increaseStat(stat);
             }
-            game.messageUser("Your " + stat + " stat has increased by " + statIncrease + "!");
+            UI.messageUser("Your " + stat + " stat has increased by " + statIncrease + "!");
         }
         this.stats.currentHealth = this.stats.maxHealth;
     }
