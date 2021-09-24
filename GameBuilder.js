@@ -4,6 +4,8 @@ var Ability = require('./Ability.js');
 var Player = require('./Player.js');
 var Enemy = require('./Enemy.js');
 var Ally = require('./Ally.js');
+const UI = require('./UI.js');
+const Calculator = require('./Calculator.js');
 
 
 
@@ -45,7 +47,7 @@ class Game {
         while(!this.gameOver) {
             this.executeTurnLoop();
         }
-        this.messageUser("Game over!", 0);
+        UI.messageUser("Game over!", 0);
     }
 
 
@@ -61,14 +63,14 @@ class Game {
     */
     executeTurnLoop() {
         this.turnCount++;
-        this.messageUser("Round " + this.turnCount.toString() + ":", 0);
+        UI.messageUser("Round " + this.turnCount.toString() + ":", 0);
         var turnOrder = this.setTurnOrder();
         for(var i = 0; i < turnOrder.length; i++) {
             //Checks if the game ended mid-round
             if(this.gameOverCheck()) {
                 break;
             }
-            this.messageUser("It is " + turnOrder[i].name + "'s turn:", 1);
+            UI.messageUser("It is " + turnOrder[i].name + "'s turn:", 1);
             //Checks if character is dead
             if(this.deathCheck(turnOrder[i])) {
                 continue;
@@ -81,7 +83,7 @@ class Game {
             //TEST: console.log("Passed status effect check.");
             //Checks if character loses their turn
             if(!turnOrder[i].conditions.hasTurn) {
-                this.messageUser(turnOrder[i].name + " loses their turn! Continuing to next turn...");
+                UI.messageUser(turnOrder[i].name + " loses their turn! Continuing to next turn...");
                 continue;
             }
             //TEST: console.log("Passed turn check.");
@@ -137,20 +139,20 @@ class Game {
         switch(character.type) {
             case 'player':
                 if(this.getPlayerByName(character.name) === -1){
-                    this.messageUser(character.name + " is dead! Moving on to next turn...");
+                    UI.messageUser(character.name + " is dead! Moving on to next turn...");
                     return 1;
                 }
                 break;
             case 'enemy':
                 if(this.getEnemyByName(character.name) === -1) {
-                    this.messageUser(character.name + " is dead! Moving on to next turn...");
+                    UI.messageUser(character.name + " is dead! Moving on to next turn...");
                     return 1;
                 }
                 break;
             case 'ally':
                 if(this.getAllyByName(character.name) === -1) {
-                    this.messageUser(character.name + " is dead! Moving on to next turn...");
-                    return 1
+                    UI.messageUser(character.name + " is dead! Moving on to next turn...");
+                    return 1;
                 }
                 break;
         }
@@ -199,7 +201,8 @@ class Game {
     */
     statusEffectCheck(character) {
         if(character.conditions.damageTakenPerRound !== 0)  {
-            this.executeDamage({name: 'Damage over time'},character, character.conditions.damageTakenPerRound);
+            this.messageUser(character.name + " has taken " + character.conditions.damageTakenPerRound + " damage from damage over time effects!");
+            this.executeDamage(character, character.conditions.damageTakenPerRound);
             //Implies the character died from on-turn damage; returns false
             if(typeof character === 'undefined') {
                 return 0;
@@ -235,22 +238,14 @@ class Game {
     takePlayerTurn(player) {
         //TEST: console.log(player);
         //TEST: console.log(statusEffects);
-        this.getGameStatus();
-        const ability = this.promptForAbility(0, player);
+        UI.getGameStatus(this);
+        const ability = UI.promptForAbility(this, player);
         if(ability === -1) {
             return;
         }
         //TEST: console.log("After:" + ability);
-        switch(ability.targetType) {
-            case 'enemy':
-                const enemies = this.promptForEnemies(ability.numTargets, player);
-                this.attackEnemies(player, enemies, ability);
-                break;
-            case 'ally':
-                const allies = this.promptForAllies(ability.numTargets, player);
-                this.healAllies(player, allies, ability);
-                break;
-        }
+        var targets = UI.promptForTargets(this, player, ability);
+        this.useAbility(ability, player, targets);
     }
 
     /*
@@ -262,12 +257,12 @@ class Game {
         results
     */
     takeEnemyTurn(enemy) {
-        var availableAbilities = this.getAvailableAbilities(enemy);
+        var availableAbilities = enemy.getAvailableAbilities(this);
         if(availableAbilities === -1) {
             return;
         }
-        var ability = availableAbilities[this.calculateRandom(0, availableAbilities.length - 1)];
-        this.messageUser(enemy.name + " is using " + ability.name + ".");
+        var ability = availableAbilities[Calculator.calculateRandom(0, availableAbilities.length - 1)];
+        UI.messageUser(enemy.name + " is using " + ability.name + ".");
         var numTargets = ability.numTargets;
         var availableTargets = [];
         if(ability.targetType === 'enemy') {
@@ -279,13 +274,13 @@ class Game {
         var selectedTargets = [];
         //Checks if the ability would hit all available targets
         if(numTargets >= availableTargets.length) {
-            this.messageUser(enemy.name + "'s " + ability.name + " attack will attempt to hit all targets.");
+            UI.messageUser(enemy.name + "'s " + ability.name + " attack will attempt to hit all targets.");
             selectedTargets = availableTargets;
         }
         else {
             //selects the targets and removes them from the available targets pool accordingly
             while(numTargets !== 0) {
-                var selectedTarget = this.calculateRandom(0, availableTargets.length - 1);
+                var selectedTarget = Calculator.calculateRandom(0, availableTargets.length - 1);
                 selectedTargets.push(availableTargets[selectedTarget]);
                 availableTargets.splice(selectedTarget, 1);
                 numTargets--;
@@ -308,12 +303,7 @@ class Game {
         None: selects a random ability and modifies properties of characters based on the result of the ability's execution
     */
     takeAllyTurn(ally) {
-        var availableAbilities = this.getAvailableAbilities(ally);
-        if(availableAbilities === -1) {
-            return;
-        }
-        var ability = availableAbilities[this.calculateRandom(0, availableAbilities.length - 1)];
-        this.messageUser(ally.name + " is using " + ability.name + ".");
+        var ability = this.selectAIAbility(ally);
         var numTargets = ability.numTargets;
         var availableTargets = [];
         if(ability.targetType === 'enemy') {
@@ -326,13 +316,13 @@ class Game {
         var selectedTargets = [];
         //Checks if the ability would hit all available targets
         if(numTargets >= availableTargets.length) {
-            this.messageUser(ally.name + "'s " + ability.name + " attack will attempt to hit all targets.");
+            UI.messageUser(ally.name + "'s " + ability.name + " attack will attempt to hit all targets.");
             selectedTargets = availableTargets;
         }
         else {
             //selects the targets and removes them from the available targets pool accordingly
             while(numTargets !== 0) {
-                var selectedTarget = this.calculateRandom(0, availableTargets.length - 1);
+                var selectedTarget = Calculator.calculateRandom(0, availableTargets.length - 1);
                 selectedTargets.push(availableTargets[selectedTarget]);
                 availableTargets.splice(selectedTarget, 1);
                 numTargets--;
@@ -348,8 +338,43 @@ class Game {
     }
 
 
+    selectAIAbility(character) {
+        var availableAbilities = character.getAvailableAbilities(this);
+        if(availableAbilities === -1) {
+            return -1;
+        }
+        var ability = availableAbilities[Calculator.calculateRandom(0, availableAbilities.length - 1)];
+        UI.messageUser(character.name + " is using " + ability.name + ".");
+        return ability;
+    }
+
+
+    selectAITargets(character, ability) {
+
+    }
+
+
 /*-------------------------------------------------------Action Functions--------------------------------------------------------------*/
     
+
+    /*
+    This function uses an ability as a character on the selected targets
+    Parameters:
+        Ability: The ability being used
+        Character: The character using the ability
+        Target: The targets of the ability
+    Returns:
+        None; The function will carry out the attack or healing of the ability on the targets
+    */
+    useAbility(ability, character, target) {
+        if(ability.targetType === 'enemy') {
+            this.attackEnemies(character, target, ability);
+        }
+        else if(ability.targetType === 'allies') {
+            this.healAllies(character, target, ability);
+        }
+    }
+
 
     /*
     This function carries out an attack on an enemy with an ability
@@ -364,10 +389,10 @@ class Game {
         //TEST: console.log(enemies);
         for(var i = 0; i < enemies.length; i++) {
             //Checks whether the attack hits or misses
-            if(!this.calculateHitOrMissDamage(character, enemies[i], ability)) {
+            if(!Calculator.calculateHitOrMissDamage(character, enemies[i], ability)) {
                 continue;
             }
-            if(this.calculateStatusEffect(ability)) {
+            if(Calculator.calculateStatusEffect(ability)) {
                 enemies[i].statusEffects.push({ statusEffect: ability.statusEffect, duration: ability.duration });
                 var statusEffectApplied = this.getStatusEffectByName(ability.statusEffect);
                 if(statusEffectApplied !== -1) {
@@ -377,8 +402,9 @@ class Game {
                     console.log("ERROR: Ability's status effect not found.");
                 }
             }
-            var damage = this.calculateDamage(character, enemies[i], ability);
-            this.executeDamage(character, enemies[i], damage);
+            var damage = Calculator.calculateDamage(character, enemies[i], ability);
+            UI.messageUser(character.name + " hit " + enemies[i].name + " with " + ability.name + " for " + damage + " damage!");
+            this.executeDamage(enemies[i], damage);
         }
     }
 
@@ -394,11 +420,12 @@ class Game {
     healAllies(character, allies, ability) {
         //TEST: console.log(allies);
         for(var i = 0; i < allies.length; i++) {
-            if(!this.calculateHitOrMissHealing(character, allies[i], ability)) {
+            if(!Calculator.calculateHitOrMissHealing(character, allies[i], ability)) {
                 continue;
             }
-            var healing = this.calculateHealing(character, ability);
-            this.executeHealing(character, allies[i], healing);
+            var healing = Calculator.calculateHealing(character, ability);
+            UI.messageUser(character.name + " healed " + allies[i].name + " with " + ability.name + " for " + healing + " health!");
+            this.executeHealing(allies[i], healing);
         }
     }
 
@@ -406,14 +433,13 @@ class Game {
     /*
     This function will carry out damage on an enemy and determine if they are dead
     Parameters:
-        Character: The character taking damage
+        Enemy: The character taking damage
         Damage: The damage dealt to the character
     Returns:
         None; The function will modify the character's health attribute and remove the character from the relevant array if they have 
         died.
     */
-    executeDamage(character, enemy, damage) {
-        this.messageUser(character.name + " hit " + enemy.name + " for " + damage + " damage!");
+    executeDamage(enemy, damage) {
         enemy.stats.currentHealth -= damage;
         if(enemy.stats.currentHealth <= 0) {
             switch(enemy.type) {
@@ -430,6 +456,20 @@ class Game {
         }
     }
 
+
+    /*
+    This function executes the healing performed by a character
+    Parameters:
+        Ally: The ally that is receiving healing
+        Healing: The amount of healing being given
+    Returns:
+        None; this function will add the healing amount to the current hp of the ally
+    */
+    executeHealing(ally, healing) {
+        ally.stats.currentHealth += healing;
+    }
+
+
     /*
     This function helps with the occurrence of character deaths in the execute damage function
     Parameters:
@@ -439,24 +479,9 @@ class Game {
         None; The function will inform the user a character has died and remove the character from the game
     */
     killCharacter(character, array) {
-        this.messageUser(character.name + " has died!");
+        UI.messageUser(character.name + " has died!");
         let index = array.findIndex(charFind => charFind.name === character.name);
         array.splice(index, 1);
-    }
-    
-
-    /*
-    This function executes the healing performed by a character
-    Parameters:
-        Character: The character that is healing an ally
-        Ally: The ally that is receiving healing
-        Healing: The amount of healing being given
-    Returns:
-        None; this function will add the healing amount to the current hp of the ally
-    */
-    executeHealing(character, ally, healing) {
-        this.messageUser(character.name + " has healed " + ally.name + " for " + healing + " health!");
-        ally.stats.currentHealth += healing;
     }
 
 
@@ -470,10 +495,10 @@ class Game {
     cueGameOver(winOrLose) {
         switch(winOrLose) {
             case 0:
-                this.messageUser("You have been defeated. You lose.");
+                UI.messageUser("You have been defeated. You lose.");
                 break;
             case 1:
-                this.messageUser("You have defeated all enemies. You win!");
+                UI.messageUser("You have defeated all enemies. You win!");
                 break;
         }
         this.gameOver = 1;
@@ -495,365 +520,9 @@ class Game {
         }
         //TEST: console.log(character.conditions);
     }
-      
-
-
-/*------------------------------------------------------Prompt Functions--------------------------------------------------------------*/
-
-
-    /*
-    This function will prompt the player for which enemy (singular) they want to attack and return the enemy object
-    Parameters:
-        Reprompt: A boolean value to determine whether or not the player has already failed the prompt
-        Character: The character that is making an attack
-    Returns:
-        Enemy: The enemy to be attacked
-    */
-    promptForEnemy(reprompt, character) {
-        var enemyList = this.stealthCheck(this.enemies, character);
-        for(var i = 0; i < enemyList.length; i++) {
-            //TEST: this.messageUser(enemyList[i].toString());
-            this.messageUser(enemyList[i].promptString());
-        }
-        if(reprompt) {
-            this.messageUser("Your character doesn't see that enemy anywhere! Please try again.");
-        }
-        var enemyToAttack = this.getUserInput("Which enemy would you like to attack?");
-        var enemy = this.getEnemyByName(enemyToAttack);
-        if(enemy === -1 || (enemy.conditions.isStealthed && !character.conditions.seesStealth)) {
-            return this.promptForEnemy(1);
-        }
-        else {
-            return enemy;
-        }
-    }
-    
-
-    /*
-    This function will prompt the player for which enemies they want to attack and return an array of enemy objects
-    Parameters:
-        Number of Enemies: The number of enemies that the ability will hit
-        Character: The character making an attack
-        Enemies To Attack: An array of enemies that the ability will hit (default value is empty; used for reprompting)
-    Returns:
-        Enemies to Attack: An array of enemies that an attack will hit
-    */
-    promptForEnemies(numEnemies, character, enemiesToAttack = []) {
-        //TEST: console.log(character.toString());
-        var enemyList = this.stealthCheck(this.enemies, character);
-        if(numEnemies >= enemyList.length) {
-            this.messageUser("This attack will attempt to hit all enemies.");
-            return enemyList;
-        }
-        while(numEnemies > 0) {
-            this.messageUser("Please select an enemy to attack. You can attack " + numEnemies.toString() + " more enemies.");
-            var enemy = this.promptForEnemy(0, character);
-            enemiesToAttack.push(enemy);
-            numEnemies--;
-        }
-        return enemiesToAttack;
-    }
-    
-
-    /*
-    This function will prompt the player for which ally they want to heal
-    Parameters:
-        Reprompt: A boolean value to determine whether or not the player has already failed the prompt
-    Returns:
-        Ally: The ally to receive healing
-    */
-    promptForAlly(reprompt, character) {
-        var allyList = this.stealthCheck(this.allies, character);
-        for(var i = 0; i < allyList.length; i++) {
-            this.messageUser(allyList[i].promptString());
-        }
-        switch(reprompt) {
-            case 1:
-                this.messageUser("Your character couldn't see that ally. Please try again.");
-                break;
-            case 2:
-                this.messageUser("The selected ally cannot be healed.");
-                break;
-            default:
-                break;
-        }
-        var allyToHeal = this.getUserInput("Which ally would you like to heal?");
-        var ally = this.getAllyByName(allyToHeal);
-        if(ally === -1 || (ally.conditions.isStealthed && !character.conditions.seesStealth)) {
-            return this.promptForAlly(1, character);
-        }
-        else if(!ally.conditions.canReceiveHealing) {
-            return this.promptForAlly(2, character);
-        }
-        else {
-            return ally;
-        }
-    }
-    
-
-    /*
-    This function will prompt the player for which allies they want to heal
-    Parameters:
-        Number of Allies: The number of allies that the player will attempt to heal
-        Reprompt: A boolean value to determine whether or not the player has failed the prompt
-        Allies to Heal: An array of the allies that the ability will heal (default value = empty; used for reprompting)
-    Returns:
-        Allies: An array of allies that the player will attempt to heal
-    */
-    promptForAllies(numAllies, character, alliesToHeal = []) {
-        var allyList = this.stealthCheck(this.allies.concat(this.players), character);
-        if(numAllies >= allyList.length) {
-            this.messageUser("This spell will attempt to heal all allies.");
-            return allyList;
-        }
-        while(numAllies > 0) {
-            this.messageUser("Please select an ally to heal. You can heal " + numAllies.toString() + " more allies.");
-            var ally = promptForAlly(0, character);
-            alliesToHeal.push(ally);
-            numAllies--;
-        }
-        return alliesToHeal;
-    }
-
-
-    /*
-    This function will prompt the player for what ability they want to use
-    Parameters:
-        Reprompt: A boolean value to determine whether the player has already failed the prompt
-        Player: The player that is taking its turn
-    Returns:
-        Ability: Returns the ability if the player has it and it is in the game; otherwise reprompts
-    */
-    promptForAbility(reprompt, player) {
-        var availableAbilities = this.getAvailableAbilities(player);
-        if(availableAbilities === -1) {
-            return -1;
-        }
-        this.messageUser("The following abilities can be used on this turn:");
-        for( var i = 0; i < availableAbilities.length; i++) {
-            this.messageUser(availableAbilities[i].name, 3);
-        }
-        //TEST: this.messageUser(player.conditions);
-        var abilityToUse;
-        switch(reprompt) {
-            case 1:
-                this.messageUser("Your character doesn't know that move. Please try again.");
-                break;
-            case 2:
-                this.messageUser("Your character cannot use magic attacks on this turn. Please try again.");
-                break;
-            case 3:
-                this.messageUser("Your character cannot use magic attacks on this turn. Please try again.");
-                break;
-            case 4:
-                this.messageUser("Your character cannot use healing abilities on this turn. Please try again.");
-                break;
-            case 5:
-                this.messageUser("Your character cannot use attacks on this turn. Please try again.");
-                break;
-            default:
-                break;
-        }
-        abilityToUse = this.getUserInput("Which ability would you like to use?");
-        const ability = this.getAbilityByName(abilityToUse);
-        if(ability.modifier === 'wisdom' && !player.conditions.canMagicAttack) {
-            return this.promptForAbility(2, player);
-        }
-        else if(ability.modifier === 'strength' && !player.conditions.canPhysicalAttack) {
-            return this.promptForAbility(3, player);
-        }
-        else if(ability.targetType === 'ally' && !player.conditions.canGiveHealing) {
-            return this.promptForAbility(4, player);
-        }
-        else if(ability.targetType === 'enemy' && !player.conditions.canAttack) {
-            return this.promptForAbility(5, player);
-        }
-        else if(ability !== -1 && player.abilities.includes(abilityToUse)) {
-            //TEST: console.log("Before: " + ability.toString());
-            return ability;
-        }
-        else {
-            return this.promptForAbility(1, player);
-        }
-    }
-
-
-    /*
-    This function allows for user input from the command line
-    Parameters:
-        Query: What the game wants to ask the user
-    Returns:
-        Response: The user's response to the query
-    */
-    getUserInput(query) {
-        const prompt = require('prompt-sync')({sigint: true});
-        const response = prompt(query + "  ");
-        return response;
-    }
-
-
-/*---------------------------------------------------Calculation Functions------------------------------------------------------------*/
-
-
-    /*
-    This function calculates whether or not the attack will hit
-    Parameters:
-        Character: The character who is attempting an attack
-        Enemy: The enemy receiving the attack
-        Ability: The ability being used
-    Returns:
-        Boolean: True if the attack hits, false if the attack misses
-    */
-    calculateHitOrMissDamage(character, enemy, ability) {
-        //75% chance * dex:evasion ratio * accuracy% (chance of 0 left in as a potential edge case)
-        if(this.calculateRandom(0, 100) * (character.stats.dexterity / enemy.stats.evasion) *  (ability.accuracy / 100) > 25) {
-            this.messageUser(character.name + " has hit " + enemy.name + " with " + ability.name + "!");
-            return 1;
-        }
-        else {
-            this.messageUser(character.name + "'s " + ability.name + " attack has missed " + enemy.name + "!");
-            return 0;
-        }
-    }
-
-
-    /*
-    This function calculates whether or not a healing ability will hit
-    Parameters:
-        Character: The character who is attempting to heal an ally
-        Ally: The ally receiving the heal
-        Ability: The ability being used
-    Returns:
-        Boolean: True if the healing is received, false if the healing fails
-    */
-    calculateHitOrMissHealing(character, ally, ability) {
-        //80% chance * ally % missing hp * accuracy%
-        if(this.calculateRandom(0, 100) * ((ally.stats.maxHealth - ally.stats.currentHealth) / ally.stats.maxHealth) * ability.accuracy > 20) {
-            this.messageUser(character.name + " healed " + ally.name + " with " + ability.name + "!");
-            return 1;
-        }
-        else {
-            this.messageUser(character.name + "'s " + ability.name + " has missed " + ally.name + "!");
-            return 0;
-        }
-    }
-
-
-    /*
-    This function calculates whether or not a status effect will hit
-    Parameters:
-        Ability: The ability being used (contains the chance of the status effect to hit)
-    Returns:
-        Boolean: True if the status effect is applied, or false if the status effect is not applied
-    */
-    calculateStatusEffect(ability) {
-        if(ability.statusEffect != "none") {
-            if(ability.chance > this.calculateRandom(1, 100)) {
-                /*This means the status effect hits*/
-                this.messageUser(ability.statusEffect.toString() + " applied!");
-                return 1;
-            }
-        }
-        return 0;
-    }
-
-
-    /*
-    This function calculates the damage of an ability given the player, enemy, and ability
-    Parameters:
-        Character: The character that is dealing damage
-        Enemy: The enemy that is taking damage
-        Ability: The ability that is dealing damage
-    Returns:
-        Damage: A number denoting the amount of damage that is dealt
-    */
-    calculateDamage(character, enemy, ability) {
-        var damage;
-        //ability multiplier * strength:defense ratio * strength
-        if(ability.modifier === "strength") {
-            damage = ability.multiplier * (character.stats.strength / enemy.stats.defense) * character.stats.strength;
-        }
-        //ability multiplier * wisdom:resilience ratio * wisdom
-        else if(ability.modifier === "wisdom") {
-            damage = ability.multiplier * (character.stats.wisdom / enemy.stats.resilience) * character.stats.wisdom;
-        }
-        else {
-            return 0;
-        }
-        damage = parseInt(this.calculateCrit(character, damage));
-        return damage;
-    }
-
-
-    /*
-    This function will calculate the healing done from a healing spell (function for later changes)
-    Parameters:
-        Character: The character that is giving healing
-        Ally: The ally that is receiving healing
-        Ability: The ability that is being used
-    Returns:
-        Integer: Amount of healing given
-    */
-    calculateHealing(character, ability) {
-        var healing = (character.stats.wisdom * ability.multiplier);
-        healing = parseInt(this.calculateCrit(character, healing));
-        return healing;
-    }
-
-
-    /*
-    This function calculates whether or not an attack is a critical hit
-    Parameters:
-        Character: The character dealing damage or healing
-        Value: The value of the damage or healing
-    Returns:
-        Value: The damage or healing after calculating the crit
-    */
-    calculateCrit(character, value) {
-        //15% + luck chance
-        if(character.stats.luck + this.calculateRandom(0, 100) > 85) {
-            this.messageUser("Critical Hit!");
-            value *= 2;
-        }
-        return value;
-    }
-
-
-    /*
-    This function calculates a random number between min and max (inclusive on both ends)
-    Parameters:
-        Min: The minimum number we want the random result to be
-        Max: The maximum number we want the random result to be
-    Returns:
-        Int: A random integer between min and max
-    */
-    calculateRandom(min, max) {
-        return Math.floor(Math.random() * (max - min + 1)) + min;
-    }
 
 
 /*-----------------------------------------------------Helper Functions---------------------------------------------------------------*/
-
-
-    getPlayers() {
-        return this.players;
-    }
-
-    getEnemies() {
-        return this.enemies;
-    }
-
-    getAllies() {
-        return this.allies;
-    }
-
-    getAbilities() {
-        return this.abilities;
-    }
-
-    getStatusEffects() {
-        return this.statusEffects;
-    }
 
 
     getPlayerByName(name) {
@@ -934,61 +603,6 @@ class Game {
         }
         this.enemies.push(enemy);
     }
-
-    messageUser(message, tabbed = 2) {
-        var tabString = "";
-        for(var i = 0; i < tabbed; i++) {
-            tabString += "\t";
-        }
-        console.log(tabString + message);
-    }
-
-    getGameStatus() {
-        this.messageUser("Players:");
-        for(var i = 0; i < this.players.length; i++) {
-            this.messageUser(this.players[i].promptString(), 3);
-        }
-        this.messageUser("Allies:");
-        for(var i = 0; i < this.allies.length; i++) {
-            this.messageUser(this.allies[i].promptString(), 3);
-        }
-        this.messageUser("Enemies:");
-        for(var i = 0; i < this.enemies.length; i++) {
-            this.messageUser(this.enemies[i].promptString(), 3);
-        }
-    }
-
-
-    getAvailableAbilities(character) {
-        var availableAbilities = [];
-        for(var i = 0; i < character.abilities.length; i++) {
-            var currAbility = this.getAbilityByName(character.abilities[i]);
-            if(!character.conditions.canAttack && currAbility.targetType === 'enemy') {
-                continue;
-            }
-            else if(!character.conditions.canPhysicalAttack && currAbility.targetType === 'enemy' && currAbility.modifier === 'strength') {
-                continue;
-            }
-            else if(!character.conditions.canMagicAttack && currAbility.targetType ===  'enemy' && currAbility.modifier === 'wisdom') {
-                continue;
-            }
-            else if(!character.conditions.canGiveHealing && currAbility.targetType === 'ally') {
-                continue;
-            }
-            else {
-                availableAbilities.push(currAbility);
-            }
-        }
-        if(availableAbilities.length === 0) {
-            this.messageUser(character.name + " cannot use any abilities on this turn. Continuing to next turn...");
-            return -1;
-        }
-        else {
-            return availableAbilities;
-        }
-    }
-
-
 }
 
 /*Creates a new empty game */

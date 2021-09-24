@@ -1,3 +1,6 @@
+const UI = require('./UI.js');
+
+
 /*
 Character attributes and their effects:
     Name: The name of the character
@@ -39,7 +42,6 @@ Character attributes and their effects:
         statReductions: Object containing an integer denoting the percentage a stat is reduced by for each stat (except currentHealth)
     NOTE: all stat changes are stored as percentages
 */
-
 class Character {
     constructor(name, abilities, strength, defense, wisdom, resilience, dexterity, evasion, maxHealth, currentHealth, luck, speed, statusEffects) {
         this.name = name;
@@ -83,6 +85,45 @@ class Character {
             }
         }
     }
+
+
+        /*
+    This function lists the available abilities for a character who is taking their turn
+    Parameters:
+        Game: The game that the character is being played in
+    Returns:
+        Available Abilities: An array of abilities available for the given character to use
+    */
+    getAvailableAbilities(game) {
+        var availableAbilities = [];
+        for(var i = 0; i < this.abilities.length; i++) {
+            var currAbility = game.getAbilityByName(this.abilities[i]);
+            if(!this.conditions.canAttack && currAbility.targetType === 'enemy') {
+                continue;
+            }
+            else if(!this.conditions.canPhysicalAttack && currAbility.targetType === 'enemy' && currAbility.modifier === 'strength') {
+                continue;
+            }
+            else if(!this.conditions.canMagicAttack && currAbility.targetType ===  'enemy' && currAbility.modifier === 'wisdom') {
+                continue;
+            }
+            else if(!this.conditions.canGiveHealing && currAbility.targetType === 'ally') {
+                continue;
+            }
+            else {
+                availableAbilities.push(currAbility);
+            }
+        }
+        if(availableAbilities.length === 0) {
+            UI.messageUser(character.name + " has no available abilities to use on this turn. Continuing to next turn...");
+            return -1;
+        }
+        else {
+            return availableAbilities;
+        }
+    }
+
+
 
     /*
     This function applies a status effect to this character
@@ -312,12 +353,12 @@ class Character {
 
 
     updateStatReduction(stat, change) {
-        console.log("stat before: " + stat)
-        console.log("change: " + change);
+        //TEST: console.log("stat before: " + stat)
+        //TEST: console.log("change: " + change);
         //gets the original stat change percentage (e.g. 50 for 50%)
         change = change * 100;
         stat -= stat - (100 - change);
-        console.log("stat after: " + stat)
+        //TEST: console.log("stat after: " + stat)
     }
 
 
