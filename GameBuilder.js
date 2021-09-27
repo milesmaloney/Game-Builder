@@ -338,19 +338,69 @@ class Game {
     }
 
 
-    selectAIAbility(character) {
+    /*
+    This function will select the ability and targets for the ally AI
+    Parameters:
+        Character: The ally taking its turn
+    Returns:
+        Object: An object containing the ability and target for the given ally's turn
+    */
+    selectAIAllyAbilityAndTargets(character) {
         var availableAbilities = character.getAvailableAbilities(this);
         if(availableAbilities === -1) {
             return -1;
         }
+        var playerState = Calculator.calculateHealthStatesByType('players');
+        var alliesState = Calculator.calculateHealthStatesByType('allies');
+        var enemiesState = Calculator.calculateHealthStatesByType('enemies');
+        //Order of precedence will be top --> bottom
+        //First considers targetting the players with healing
+        if(this.players.length === 1) {
+            if(playerState.largestPercentHealthMissing >= 50) {
+                //Single target healing ability on highest % missing hp player
+            }
+        }
+        else if(this.players.length > 1) {
+            if(playerState.largestDeviationValue > 25) {
+                //Single target healing ability on highest % missing hp player
+            }
+            else if(playerState.largestDeviationValue <= 25 && playerState.averageMissingHealth >= 45) {
+                //AOE healing ability on all players
+            }
+        }
+        //Then considers healing wounded allies
+        if(this.allies.length === 1) {
+            if(alliesState.largestPercentHealthMissing >= 65) {
+                //Single target healing ability on highest % missing hp ally
+            }
+        }
+        else if(this.allies.length > 1) {
+            if(alliesState.largestDeviationValue > 50) {
+                //Single target healing ability on highest % missing hp ally
+            }
+            else if(alliesState.largestDeviationValue <= 50 && alliesState.averageMissingHealth >= 60) {
+                //AOE healing ability on all allies
+            }
+        }
+        //Finally consider enemies for attacking
+        if(this.enemies.length === 1) {
+            if(enemiesState.largestPercentHealthMissing >= 85) {
+                //Single target attacking ability of stronger modifier on highest % missing hp enemy
+            }
+        }
+        else if(this.enemies.length > 1) {
+            if(enemiesState.largestDeviationValue > 40) {
+                //Single target attacking ability of stronger modifier on highest % missing hp enemy
+            }
+            else if(enemiesState.largestDeviationValue <= 40 && enemiesState.averageMissingHealth >= 60) {
+                //AOE attacking ability of stronger modifier on all enemies
+            }
+        }
+        //Random ability on random target(s)
+        ability = availableAbilities[Calculator.calculateRandom(0, availableAbilities.length - 1)];
         var ability = availableAbilities[Calculator.calculateRandom(0, availableAbilities.length - 1)];
         UI.messageUser(character.name + " is using " + ability.name + ".");
         return ability;
-    }
-
-
-    selectAITargets(character, ability) {
-
     }
 
 
@@ -370,7 +420,7 @@ class Game {
         if(ability.targetType === 'enemy') {
             this.attackEnemies(character, target, ability);
         }
-        else if(ability.targetType === 'allies') {
+        else if(ability.targetType === 'ally') {
             this.healAllies(character, target, ability);
         }
     }

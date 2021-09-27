@@ -191,7 +191,11 @@ class UI {
         else {
             var numTargets = ability.numTargets;
             while(numTargets > 0) {
-                this.messageUser("You can choose " + numTargets + " more targets to be affected by " + ability.name + ".");
+                var plural = '';
+                if(numTargets > 1) {
+                    plural = 's';
+                }
+                this.messageUser("You can choose " + numTargets + " more target" + plural + " to be affected by " + ability.name + ".");
                 selectedTargets.push(this.promptForTarget(ability, availableTargets));
                 numTargets--;
             }

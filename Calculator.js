@@ -6,6 +6,60 @@ class Calculator {
 
     
     /*
+    This function calculates the average and largest deviation of a character type's health in the given game
+    Parameters: 
+        Game : The game we want to find the health summation of enemies for
+        Type : The type of character we want the average of
+    Returns: 
+        Int : The summation of the health of all characters of the given type in the given game
+    */
+    calculateHealthStatesByType(game, type) {
+        switch(type) {
+            case 'players':
+                return this.calculateHealthStates(game.players);
+            case 'allies':
+                return this.calculateHealthStates(game.allies.concate(game.players));
+            case 'enemies':
+                return this.calculateHealthStates(game.enemies);
+        }
+    }
+
+
+    /*
+    This function calculates relevant health states
+    Parameters:
+        Array: The array of character objects we want the health states of
+    Returns:
+        Health states:
+            An object with many different states to define the health States of the characters of the given array:
+            Average Current Health: The average current health of all characters in the array
+            Average Max Health: The average max health of all characters in the array
+            Average Missing Health: The average missing health of all charactes in the array
+            Largest Negative Deviation Value: The largest negative deviation in the array
+            Largest Negative Deviation Object: The object that carries the largest negative deviation value
+            Largest Percent Health Missing: The largest % missing health value among the array
+            Largest Percent Health Missing Object: The object that carries the largest % missing health value
+    */
+
+    calculateHealthStates(array) {
+        var healthStates = { averageMissingHealth: 0, largestDeviationValue: 0, largestPercentHealthMissing: 0, largestPercentHealthMissingObject: undefined};
+        //Checks for the largest % of missing health
+        for(var i = 0; i < array.length; i++) {
+            var percentHealthMissing = ((array[i].maxHealth - array[i].currentHealth) / array[i].maxHealth) * 100;
+            if(percentHealthMissing > healthStates.largestPercentHealthMissing) {
+                healthStates.largestPercentHealthMissing = percentHealthMissing;
+                healthStates.largestPercentHealthMissingObject = array[i];
+            }
+            healthStates.averageMissingHealth += percentHealthMissing;
+        }
+        healthStates.averageMissingHealth /= array.length;
+        //Checks for the largest positive deviation from the average missing health (largest % of missing health & how far from average that is)
+        healthStates.largestDeviationValue = healthStates.largestPercentHealthMissing - healthStates.averageMissingHealth;
+        return healthStates;
+    }
+
+
+    /*
     This function calculates whether or not the attack will hit
     Parameters:
         Character: The character who is attempting an attack
