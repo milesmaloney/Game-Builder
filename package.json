@@ -1,0 +1,27 @@
+{
+  "name": "game-builder",
+  "version": "1.0.0",
+  "description": "Builds a game and runs it",
+  "main": "(GameBuilder.js)",
+  "dependencies": {
+    "async": "^3.2.1",
+    "prompt-sync": "^4.2.0"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "node GameBuilder.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/milesmaloney/Game-Builder.git"
+  },
+  "keywords": [
+    "Game"
+  ],
+  "author": "Miles Maloney",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/milesmaloney/Game-Builder/issues"
+  },
+  "homepage": "https://github.com/milesmaloney/Game-Builder#readme"
+}

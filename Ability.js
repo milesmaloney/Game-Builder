@@ -48,15 +48,15 @@ class Ability {
             case 2:
                 availableTargets = game.stealthCheck(game.enemies, character);
                 break;
-            //Enemy healing enemy
+            //Enemy attacking player/ally
             case 3:
+                availableTargets = game.stealthCheck(game.players.concat(game.allies), character);
+                break;
+            //Enemy healing enemy
+            case 4:
                 availableTargets = game.stealthCheck(game.enemies, character);
                 //Filters out enemies that cannot receive healing
                 availableTargets.filter(item => item.conditions.canReceiveHealing);
-                break;
-            //Enemy attacking player/ally
-            case 4:
-                availableTargets = game.stealthCheck(game.players.concat(game.allies), character);
                 break;
             //Character type or ability target type unidentified
             default:
@@ -85,12 +85,12 @@ class Ability {
         else if((character.type === 'player' || character.type === 'ally') && this.targetType === 'enemy') {
             return 2;   
         }
-        //Enemy healing an enemy
+        //Enemy attacking an ally or player
         else if(character.type === 'enemy' && this.targetType === 'enemy') {
             return 3;
         }
-        //Enemy attacking an ally
-        else if(character.type === 'enemy' && (this.targetType === 'player' || this.targetType === 'ally')) {
+        //Enemy healing an enemy
+        else if(character.type === 'enemy' && this.targetType === 'ally') {
             return 4;
         }
         else {
