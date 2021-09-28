@@ -51,6 +51,40 @@ class Game {
     }
 
 
+    /*
+    This function will initialize status effects when a character is constructed with pre-determined status effects
+     Parameters:
+         Character: The character currently being initialized
+     Returns:
+         None; the function will fill the character's conditions property
+     */
+    initStatusEffects(character) {
+        for(var i = 0; i < character.statusEffects.length; i++) {
+            character.applyStatusEffect(this.getStatusEffectByName(character.statusEffects[i].statusEffect));
+        }
+    }
+
+    
+        /*
+    This function informs the user whether they win or lose when the game ends
+    Parameters:
+        winOrLose: A boolean value (0 or 1) denoting whether all players died or all enemies died
+    Returns:
+        None; Outputs message to user and mutates gameOver value to true
+    */
+    cueGameOver(winOrLose) {
+        switch(winOrLose) {
+            case 0:
+                UI.messageUser("You have been defeated. You lose.");
+                break;
+            case 1:
+                UI.messageUser("You have defeated all enemies. You win!");
+                break;
+        }
+        this.gameOver = 1;
+    }
+
+
 /*----------------------------------------------------------Turn Functions------------------------------------------------------------*/
 
 
@@ -106,6 +140,22 @@ class Game {
         }
     }
 
+
+    /*
+    Sets the turn order based on character's speed multiplied by a random number between 0 and 1
+    Parameters:
+        None; this function uses the players, allies, and enemies arrays in the Game object to find the turn order
+    Returns:
+        Characters: An array of all of the characters in the game sorted by the character's speeds multiplied by a random number between 
+        0 and 1
+    */
+    setTurnOrder() {
+        var characters = this.players.concat(this.enemies).concat(this.allies);
+        characters.sort((a,b) => (a.speed * Math.random() < b.speed * Math.random()) ? 1 : -1);
+        return characters;
+    }
+
+
     /*
     This function checks if the game over condition has been met
     Parameters:
@@ -158,37 +208,6 @@ class Game {
         }
         return 0;
     }
-
-    /*
-    This function will check for stealth conditions and return the enemies or allies that the player can see
-    Parameters:
-        Array: The array denoting the types of characters the player is looking for
-        Character: The character that is attempting an action
-    Returns:
-        Array: A new array with all characters the character attempting an action can see
-    */
-    stealthCheck(array, character) {
-        if(character.conditions.seesStealth) {
-            return array;
-        }
-        else {
-            return array.filter(item => !item.conditions.isStealthed);
-        }
-    }
-
-    /*
-    Sets the turn order based on character's speed multiplied by a random number between 0 and 1
-    Parameters:
-        None; this function uses the players, allies, and enemies arrays in the Game object to find the turn order
-    Returns:
-        Characters: An array of all of the characters in the game sorted by the character's speeds multiplied by a random number between 
-        0 and 1
-    */
-    setTurnOrder() {
-        var characters = this.players.concat(this.enemies).concat(this.allies);
-        characters.sort((a,b) => (a.speed * Math.random() < b.speed * Math.random()) ? 1 : -1);
-        return characters;
-    }
     
 
     /*
@@ -214,6 +233,25 @@ class Game {
     }
 
 
+
+    /*
+    This function will check for stealth conditions and return the enemies or allies that the player can see
+    Parameters:
+        Targets: The array denoting the types of characters the player is looking for
+        Character: The character that is attempting an action
+    Returns:
+        Targets: An array with all characters the character attempting an action can see
+    */
+    stealthCheck(targets, character) {
+        if(character.conditions.seesStealth) {
+            return targets;
+        }
+        else {
+            return targets.filter(item => !item.conditions.isStealthed);
+        }
+    }
+
+
     /*
     This function will execute a turn from the player point of view
     Parameters:
@@ -236,14 +274,11 @@ class Game {
             *The attacker's luck
     */        
     takePlayerTurn(player) {
-        //TEST: console.log(player);
-        //TEST: console.log(statusEffects);
         UI.getGameStatus(this);
         const ability = UI.promptForAbility(this, player);
         if(ability === -1) {
             return;
         }
-        //TEST: console.log("After:" + ability);
         var targets = UI.promptForTargets(this, player, ability);
         this.useAbility(ability, player, targets);
     }
@@ -257,43 +292,9 @@ class Game {
         results
     */
     takeEnemyTurn(enemy) {
-        var availableAbilities = enemy.getAvailableAbilities(this);
-        if(availableAbilities === -1) {
-            return;
-        }
-        var ability = availableAbilities[Calculator.calculateRandom(0, availableAbilities.length - 1)];
-        UI.messageUser(enemy.name + " is using " + ability.name + ".");
-        var numTargets = ability.numTargets;
-        var availableTargets = [];
-        if(ability.targetType === 'enemy') {
-            var availableTargets = this.stealthCheck(this.allies.concat(this.players), enemy);
-        }
-        else if(ability.targetType === 'ally') {
-            var availableTargets = this.stealthCheck(this.enemies, enemy);
-        }
-        var selectedTargets = [];
-        //Checks if the ability would hit all available targets
-        if(numTargets >= availableTargets.length) {
-            UI.messageUser(enemy.name + "'s " + ability.name + " attack will attempt to hit all targets.");
-            selectedTargets = availableTargets;
-        }
-        else {
-            //selects the targets and removes them from the available targets pool accordingly
-            while(numTargets !== 0) {
-                var selectedTarget = Calculator.calculateRandom(0, availableTargets.length - 1);
-                selectedTargets.push(availableTargets[selectedTarget]);
-                availableTargets.splice(selectedTarget, 1);
-                numTargets--;
-            }
-        }
-        if(ability.targetType === 'enemy') {
-            this.attackEnemies(enemy, selectedTargets, ability);
-        }
-        else {
-            this.healAllies(enemy, selectedTargets, ability);
-        }
+        var turnUse = this.selectAIEnemyAbilityAndTargets(enemy);
+        this.useAbility(turnUse.ability, enemy, turnUse.targets);
     }
-
 
     /*
     This function takes a turn on behalf of an ally (AI)
@@ -303,39 +304,102 @@ class Game {
         None: selects a random ability and modifies properties of characters based on the result of the ability's execution
     */
     takeAllyTurn(ally) {
-        var ability = this.selectAIAbility(ally);
-        var numTargets = ability.numTargets;
-        var availableTargets = [];
-        if(ability.targetType === 'enemy') {
-            var availableTargets = this.stealthCheck(this.enemies, ally);
+        var turnUse = this.selectAIAllyAbilityAndTargets(ally);
+        this.useAbility(turnUse.ability, ally, turnUse.targets);
+    }
+
+
+    /*
+    This function will select the ability and targets for the ally AI
+    Parameters:
+        Character: The ally taking its turn
+    Returns:
+        Object: An object containing the ability and target for the given ally's turn
+    */
+    selectAIEnemyAbilityAndTargets(character) {
+        var availableAbilities = character.getAvailableAbilities(this);
+        var selectedAbility;
+        var selectedTargets;
+        if(availableAbilities === -1) {
+            return -1;
         }
-        else if(ability.targetType === 'ally') {
-            var availableTargets = this.stealthCheck(this.players.concat(this.allies), ally);
-        }
-        //TEST: console.log("Ally: " + ally.name + "\n" + ability.toString() + "\nAvailable Targets: \n" + availableTargets);
-        var selectedTargets = [];
-        //Checks if the ability would hit all available targets
-        if(numTargets >= availableTargets.length) {
-            UI.messageUser(ally.name + "'s " + ability.name + " attack will attempt to hit all targets.");
-            selectedTargets = availableTargets;
-        }
-        else {
-            //selects the targets and removes them from the available targets pool accordingly
-            while(numTargets !== 0) {
-                var selectedTarget = Calculator.calculateRandom(0, availableTargets.length - 1);
-                selectedTargets.push(availableTargets[selectedTarget]);
-                availableTargets.splice(selectedTarget, 1);
-                numTargets--;
+        var playerState = Calculator.calculateHealthStatesByType(this, 'players');
+        var alliesState = Calculator.calculateHealthStatesByType(this, 'allies');
+        var enemiesState = Calculator.calculateHealthStatesByType(this, 'enemies');
+        //Order of precedence will be top --> bottom
+        //First considers attacking wounded allies
+        if(this.allies.length === 1) {
+            if(alliesState.largestPercentHealthMissing >= 60) {
+                //Single target attacking ability on highest % missing hp ally
+                selectedAbility = this.selectAbility(availableAbilities, 0, 'enemy');
+                selectedTargets = [alliesState.largestPercentHealthMissingObject];
             }
         }
-        //TEST: console.log(selectedTargets);
-        if(ability.targetType === 'enemy') {
-            this.attackEnemies(ally, selectedTargets, ability);
+        else if(this.allies.length > 1) {
+            if(alliesState.largestDeviationValue > 50) {
+                //Single target attacking ability on highest % missing hp ally
+                selectedAbility = this.selectAbility(availableAbilities, 0, 'enemy');
+                selectedTargets = [alliesState.largestPercentHealthMissingObject];
+            }
+            else if(alliesState.largestDeviationValue <= 50 && alliesState.averageMissingHealth >= 20) {
+                //AOE attacking ability on multiple allies
+                selectedAbility = this.selectAbility(availableAbilities, 1, 'enemy');
+                selectedTargets = this.selectTargets(selectedAbility, character);
+            }
         }
-        else if(ability.targetType === 'ally') {
-            this.healAllies(ally, selectedTargets, ability);
+        //Then considers attacking low health player
+        if(this.players.length === 1 && typeof(selectedAbility) === 'undefined') {
+            if(playerState.largestPercentHealthMissing >= 70) {
+                //Single target attacking ability on highest % missing hp player
+                selectedAbility = this.selectAbility(availableAbilities, 0, 'enemy');
+                selectedTargets = this.selectTargets(selectedAbility, character);
+            }
         }
+        else if(this.players.length > 1) {
+            if(playerState.largestDeviationValue > 25) {
+                //Single target attacking ability on highest % missing hp player
+                selectedAbility = this.selectAbility(availableAbilities, 0, 'enemy');
+                selectedTargets = this.selectTargets(selectedAbility, character);
+            }
+            else if(playerState.largestDeviationValue <= 25 && playerState.averageMissingHealth >= 45) {
+                //AOE attacking ability on multiple players
+                selectedAbility = this.selectAbility(availableAbilities, 1, 'enemy');
+                selectedTargets = this.selectTargets(selectedAbility, character);
+            }
+        }
+        //Finally consider enemies for healing
+        if(this.enemies.length === 1 && typeof(selectedAbility) === 'undefined') {
+            if(enemiesState.largestPercentHealthMissing >= 85) {
+                //Single target healing ability on highest % missing hp enemy
+                selectedAbility = this.selectAbility(availableAbilities, 0, 'ally');
+                selectedTargets = [enemiesState.largestPercentHealthMissingObject];
+            }
+        }
+        else if(this.enemies.length > 1) {
+            if(enemiesState.largestDeviationValue > 65) {
+                //Single target healing ability on highest % missing hp enemy
+                selectedAbility = this.selectAbility(availableAbilities, 0, 'ally');
+                selectedTargets = [enemiesState.largestPercentHealthMissingObject];
+            }
+            else if(enemiesState.largestDeviationValue <= 40 && enemiesState.averageMissingHealth >= 70) {
+                //AOE healing ability on multiple enemies
+                selectedAbility = this.selectAbility(availableAbilities, 1, 'ally');
+                selectedTargets = this.selectTargets(selectedAbility, character);
+            }
+        }
+        if(typeof(selectedAbility) === 'undefined') {
+            //takes healing completely out of the equation until average hp of enemies is <= 40%
+            if(enemiesState.averageMissingHealth < 60) {
+                availableAbilities = availableAbilities.filter(item => item.targetType === 'enemy');
+            }
+            //Random ability on random target(s)
+            selectedAbility = this.selectAbility(availableAbilities, 'unspecified', 'unspecified');
+            selectedTargets = this.selectTargets(selectedAbility, character);
+        }
+        UI.messageUser(character.name + " is using " + selectedAbility.name + ".");
+        return {ability: selectedAbility, targets: selectedTargets};
     }
+
 
 
     /*
@@ -347,60 +411,150 @@ class Game {
     */
     selectAIAllyAbilityAndTargets(character) {
         var availableAbilities = character.getAvailableAbilities(this);
+        var selectedAbility;
+        var selectedTargets;
         if(availableAbilities === -1) {
             return -1;
         }
-        var playerState = Calculator.calculateHealthStatesByType('players');
-        var alliesState = Calculator.calculateHealthStatesByType('allies');
-        var enemiesState = Calculator.calculateHealthStatesByType('enemies');
+        var playerState = Calculator.calculateHealthStatesByType(this, 'players');
+        var alliesState = Calculator.calculateHealthStatesByType(this, 'allies');
+        var enemiesState = Calculator.calculateHealthStatesByType(this, 'enemies');
         //Order of precedence will be top --> bottom
         //First considers targetting the players with healing
         if(this.players.length === 1) {
             if(playerState.largestPercentHealthMissing >= 50) {
                 //Single target healing ability on highest % missing hp player
+                selectedAbility = this.selectAbility(availableAbilities, 0, 'ally');
+                selectedTargets = [playerState.largestPercentHealthMissingObject];
             }
         }
         else if(this.players.length > 1) {
             if(playerState.largestDeviationValue > 25) {
                 //Single target healing ability on highest % missing hp player
+                selectedAbility = this.selectAbility(availableAbilities, 0, 'ally');
+                selectedTargets = [playerState.largestPercentHealthMissingObject];
             }
             else if(playerState.largestDeviationValue <= 25 && playerState.averageMissingHealth >= 45) {
-                //AOE healing ability on all players
+                //AOE healing ability on multiple players
+                selectedAbility = this.selectAbility(availableAbilities, 1, 'ally');
+                selectedTargets = this.selectTargets(selectedAbility, character);
             }
         }
         //Then considers healing wounded allies
-        if(this.allies.length === 1) {
+        if(this.allies.length === 1 && typeof(selectedAbility) === 'undefined') {
             if(alliesState.largestPercentHealthMissing >= 65) {
                 //Single target healing ability on highest % missing hp ally
+                selectedAbility = this.selectAbility(availableAbilities, 0, 'ally');
+                selectedTargets = [alliesState.largestPercentHealthMissingObject];
             }
         }
         else if(this.allies.length > 1) {
             if(alliesState.largestDeviationValue > 50) {
                 //Single target healing ability on highest % missing hp ally
+                selectedAbility = this.selectAbility(availableAbilities, 0, 'ally');
+                selectedTargets = [alliesState.largestPercentHealthMissingObject];
             }
             else if(alliesState.largestDeviationValue <= 50 && alliesState.averageMissingHealth >= 60) {
-                //AOE healing ability on all allies
+                //AOE healing ability on multiple allies
+                selectedAbility = this.selectAbility(availableAbilities, 1, 'ally');
+                selectedTargets = this.selectTargets(selectedAbility, character);
             }
         }
         //Finally consider enemies for attacking
-        if(this.enemies.length === 1) {
+        if(this.enemies.length === 1 && typeof(selectedAbility) === 'undefined') {
             if(enemiesState.largestPercentHealthMissing >= 85) {
-                //Single target attacking ability of stronger modifier on highest % missing hp enemy
+                //Single target attacking ability on highest % missing hp enemy
+                selectedAbility = this.selectAbility(availableAbilities, 0, 'enemy');
+                selectedTargets = [enemiesState.largestPercentHealthMissingObject];
             }
         }
         else if(this.enemies.length > 1) {
             if(enemiesState.largestDeviationValue > 40) {
-                //Single target attacking ability of stronger modifier on highest % missing hp enemy
+                //Single target attacking ability on highest % missing hp enemy
+                selectedAbility = this.selectAbility(availableAbilities, 0, 'enemy');
+                selectedTargets = [enemiesState.largestPercentHealthMissingObject];
             }
             else if(enemiesState.largestDeviationValue <= 40 && enemiesState.averageMissingHealth >= 60) {
-                //AOE attacking ability of stronger modifier on all enemies
+                //AOE attacking ability on multiple enemies
+                selectedAbility = this.selectAbility(availableAbilities, 1, 'enemy');
+                selectedTargets = this.selectTargets(selectedAbility, character);
             }
         }
-        //Random ability on random target(s)
-        ability = availableAbilities[Calculator.calculateRandom(0, availableAbilities.length - 1)];
-        var ability = availableAbilities[Calculator.calculateRandom(0, availableAbilities.length - 1)];
-        UI.messageUser(character.name + " is using " + ability.name + ".");
-        return ability;
+        if(typeof(selectedAbility) === 'undefined') {
+            //takes healing completely out of the equation until average hp of allies and player is <= 75%
+            if(((playerState.averageMissingHealth + alliesState.averageMissingHealth) / 2) < 25) {
+                availableAbilities = availableAbilities.filter(item => item.targetType === 'enemy');
+            }
+            //Random ability on random target(s)
+            selectedAbility = this.selectAbility(availableAbilities, 'unspecified', 'unspecified');
+            selectedTargets = this.selectTargets(selectedAbility, character);
+        }
+        UI.messageUser(character.name + " is using " + selectedAbility.name + ".");
+        return {ability: selectedAbility, targets: selectedTargets};
+    }
+
+    /*
+    This function selects an ability for an AI character given a set of parameters
+    Parameters:
+        Abilities: The abilities available for the character to use
+        isAOE: A boolean value denoting whether the ability should affect multiple targets
+        targetType: The desired target type of the ability
+    Returns:
+        Ability: An ability randomly selected from the abilities available that fit the standards specified
+    */
+    selectAbility(abilities, isAOE, targetType) {
+        if(isAOE !== 'unspecified') {
+            if(isAOE) {
+                abilities = abilities.filter(item => item.numTargets > 1);
+            }
+            else {
+                abilities = abilities.filter(item => item.numTargets === 1);
+            }
+        }
+        if(targetType === 'ally') {
+            abilities = abilities.filter(item => item.targetType === 'ally');
+        }
+        else if(targetType === 'enemy') {
+            abilities = abilities.filter(item => item.targetType === 'enemy');
+        }
+        else if(targetType !== 'unspecified') {
+            UI.messageUser("ERROR: Unrecognized target type found when selecting an ability.");
+        }
+        return abilities[Calculator.calculateRandom(0, abilities.length - 1)];
+    }
+
+    /*
+    This function selects targets for AI characters
+    Parameters:
+        Ability: The ability the character is using
+        Character: The character that is selecting a target
+    Returns:
+        Selected Targets: An array containing the targets selected to be affected by the given ability
+    */
+    selectTargets(ability, character) {
+        var availableTargets = ability.getAvailableTargets(this, character);
+        var selectedTargets = [];
+        var numTargets = ability.numTargets;
+        if(numTargets > availableTargets.length) {
+            selectedTargets = availableTargets;
+        }
+        while(numTargets !== 0) {
+            if(ability.targetType === 'ally') {
+                availableTargets = availableTargets.sort((item1, item2) => (((item1.maxHealth - item1.currentHealth) / item1.maxHealth) * Math.random() < ((item2.maxHealth - item2.currentHealth) / item2.maxHealth) * Math.random() ? 1 : -1));
+            }
+            else if(ability.targetType === 'enemy') {
+                //Targetting likelihood based on current health with randomness
+                availableTargets = availableTargets.sort((item1, item2) =>  (item1.currentHealth * Math.random() < item2.currentHealth * Math.random() ? 1 : -1));
+            }
+            else {
+                UI.messageUser("ERROR: Unrecognized target type found when selecting targets.");
+                break;
+            }
+            selectedTargets.push(availableTargets[availableTargets.length - 1]);
+            availableTargets.splice(availableTargets.length - 1, 1);
+            numTargets--;
+        }
+        return selectedTargets;
     }
 
 
@@ -422,6 +576,9 @@ class Game {
         }
         else if(ability.targetType === 'ally') {
             this.healAllies(character, target, ability);
+        }
+        else {
+            UI.messageUser("ERROR: Unrecognized target type found while attempting to use AI ability.");
         }
     }
 
@@ -468,6 +625,7 @@ class Game {
         None; the healing will be added to the ally's current health if successful
     */
     healAllies(character, allies, ability) {
+        console.log("Heal allies triggered.");
         //TEST: console.log(allies);
         for(var i = 0; i < allies.length; i++) {
             if(!Calculator.calculateHitOrMissHealing(character, allies[i], ability)) {
@@ -532,43 +690,6 @@ class Game {
         UI.messageUser(character.name + " has died!");
         let index = array.findIndex(charFind => charFind.name === character.name);
         array.splice(index, 1);
-    }
-
-
-    /*
-    This function informs the user whether they win or lose when the game ends
-    Parameters:
-        winOrLose: A boolean value (0 or 1) denoting whether all players died or all enemies died
-    Returns:
-        None; Outputs message to user and mutates gameOver value to true
-    */
-    cueGameOver(winOrLose) {
-        switch(winOrLose) {
-            case 0:
-                UI.messageUser("You have been defeated. You lose.");
-                break;
-            case 1:
-                UI.messageUser("You have defeated all enemies. You win!");
-                break;
-        }
-        this.gameOver = 1;
-    }
-
-
-    /*
-    This function will initialize status effects when a character is constructed with pre-determined status effects
-    Parameters:
-        Character: The character currently being initialized
-    Returns:
-        None; the function will fill the character's conditions property
-    */
-    initStatusEffects(character) {
-        //TEST: console.log(character.toString());
-        //TEST: console.log(character.statusEffects);
-        for(var i = 0; i < character.statusEffects.length; i++) {
-            character.applyStatusEffect(this.getStatusEffectByName(character.statusEffects[i].statusEffect));
-        }
-        //TEST: console.log(character.conditions);
     }
 
 
@@ -714,10 +835,11 @@ myGame.addAbility("Minor Arcane Barrage", "none", 0, 0, "enemy", 12, 70, "wisdom
 myGame.addPlayer("Player 1", [ "Slice", "Sweep", "Minor Heal", "Minor Group Heal", "Minor Arcane Beam", "Minor Arcane Barrage"], 5, 5, 5, 5, 5, 5, 25, 25, 5, 50, []);
 
 //Initialize Allies
-myGame.addAlly("Ally 1", [ "Minor Heal", "Minor Arcane Beam" ], 5, 5, 5, 5, 5, 5, 25, 25, 5, 50, []);
+myGame.addAlly("Ally 1", [ "Minor Heal", "Minor Arcane Beam", "Minor Arcane Barrage" ], 5, 5, 5, 5, 5, 5, 25, 25, 5, 50, []);
 
 //Initialize Enemies
 myGame.addEnemy("Enemy 1", ["Punch","Minor Arcane Beam", "Slice", "Minor Heal"], 5, 5, 5, 5, 5, 5, 25, 25, 5, 50, []);
 myGame.addEnemy("Enemy 2", ["Minor Group Heal", "Minor Arcane Beam", "Sweep"], 5, 5, 5, 5, 5, 5, 25, 25, 5, 50, []);
 
+//Play current game
 myGame.playGame();
