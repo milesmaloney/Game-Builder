@@ -41,11 +41,6 @@ class Game {
         None; This function handles the main event loop of the game
     */
     playGame() {
-        //Initialize all values that need to be initialized outside of the loop (currently only status effects)
-        const characters = this.players.concat(this.allies).concat(this.enemies);
-        for (var i = 0; i < characters.length; i++) {
-            this.initStatusEffects(characters[i]);
-        }
         //Execute the turn loop until the game is over
         while(!this.gameOver) {
             this.executeTurnLoop();
@@ -54,18 +49,7 @@ class Game {
     }
 
 
-    /*
-    This function will initialize status effects when a character is constructed with pre-determined status effects
-     Parameters:
-         Character: The character currently being initialized
-     Returns:
-         None; the function will fill the character's conditions property
-     */
-    initStatusEffects(character) {
-        for(var i = 0; i < character.statusEffects.length; i++) {
-            character.applyStatusEffect(this.getStatusEffectByName(character.statusEffects[i].statusEffect));
-        }
-    }
+
 
     
         /*
@@ -112,18 +96,15 @@ class Game {
             if(this.deathCheck(turnOrder[i])) {
                 continue;
             }
-            //TEST: console.log("Passed death check.");
             //Checks if character died to bleed
             if(!this.statusEffectCheck(turnOrder[i])) {
                 continue
             }
-            //TEST: console.log("Passed status effect check.");
             //Checks if character loses their turn
             if(!turnOrder[i].conditions.hasTurn) {
                 UI.messageUser(turnOrder[i].name + " loses their turn! Continuing to next turn...");
                 continue;
             }
-            //TEST: console.log("Passed turn check.");
             //Executes player's turn
             if(turnOrder[i].type === "player") {
                 this.takePlayerTurn(turnOrder[i]);
@@ -628,8 +609,6 @@ class Game {
         None; the healing will be added to the ally's current health if successful
     */
     healAllies(character, allies, ability) {
-        console.log("Heal allies triggered.");
-        //TEST: console.log(allies);
         for(var i = 0; i < allies.length; i++) {
             if(!Calculator.calculateHitOrMissHealing(character, allies[i], ability)) {
                 continue;
@@ -678,6 +657,9 @@ class Game {
     */
     executeHealing(ally, healing) {
         ally.stats.currentHealth += healing;
+        if(ally.stats.currentHealth > ally.stats.maxHealth) {
+            ally.stats.currentHealth = ally.stats.maxHealth;
+        }
     }
 
 
@@ -791,8 +773,6 @@ class Game {
         this.enemies.push(enemy);
     }
 }
-
-module.exports = Game;
 
 //Initialize Game
 var myGame = new Game([],[],[],[],[],[]);

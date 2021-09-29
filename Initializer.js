@@ -4,6 +4,13 @@ class Initializer {
     constructor() {
     }
 
+    /*
+    This function initializes the game using the other functions of the Initializer
+    Parameter:
+        Game: The empty constructed game object being initialized
+    Returns:
+        Game: The filled game object after being initialized
+    */
     initializeGame(game) {
         this.initializeStatusEffects(game);
         this.initializeAbilities(game);
@@ -11,9 +18,17 @@ class Initializer {
         this.initializeEnemies(game);
         this.initializeAllies(game);
         this.initializePlayers(game);
+        this.initializeStatusEffectsOnCharacters(game);
         return game;
     }
 
+    /*
+    This function initializes the status effects for the game
+    Parameters:
+        Game: The game being initialized
+    Returns:
+        None; creates character classes for the game
+    */
     initializeStatusEffects(game) {
         //Damage reduction status effects
         game.addStatusEffect("unfocused", "Unfocused characters have their magic damage reduced by 25%", 0, 0, 0, 0, 0, 0, 0, 25);
@@ -36,6 +51,13 @@ class Initializer {
         game.addStatusEffect("none", "Abilities with no status effect behave as normal");
     }
 
+    /*
+    This function initializes the abilities for the game
+    Parameters:
+        Game: The game being initialized
+    Returns:
+        None; creates character classes for the game
+    */
     initializeAbilities(game) {
         //Initialize abilities (100 targets = all targets)
         //Single Target Physical Attacks
@@ -58,7 +80,13 @@ class Initializer {
         game.addAbility("Minor Arcane Barrage", "none", 0, 0, "enemy", 12, 70, "wisdom", 0.4);
     }
 
-
+    /*
+    This function initializes the character classes for the game
+    Parameters:
+        Game: The game being initialized
+    Returns:
+        None; creates character classes for the game
+    */
     initializeCharacterClasses(game) {
         game.addCharacterClass('Arcane Mage', 'The arcane mage is attuned to the arcane arts, and focuses its time and energy on studying the workings of magic.', ['Minor Arcane Beam', 'Minor Arcane Barrage'], 1, 5, 1, 3, 4, 2, 20, 1, 15, {
             stats: {
@@ -69,10 +97,11 @@ class Initializer {
                 dexterity: 0.60,
                 evasion: 0.35,
                 luck: 0.5,
-                speed: 5
+                speed: 5,
+                maxHealth: 3
             },
             abilities: [{level: 2, availableAbilities: ['Minor Heal']}, {level: 5, availableAbilities: ['Slice', 'Minor Group Heal']}]
-        })
+        });
 
         game.addCharacterClass('Warrior', 'The warrior was made for battle. The warrior spends its time challenging those who dare stand in their way.', ['Slice', 'Sweep'], 4, 1, 4, 2, 3, 1, 30, 5, 23, {
             stats: {
@@ -83,25 +112,71 @@ class Initializer {
                 dexterity: 0.6,
                 evasion: 0.45,
                 luck: 0.66,
-                speed: 7
+                speed: 7,
+                maxHealth: 5
             },
             abilities: [{level: 2, availableAbilities: 'Punch'}, {level: 5, availableAbilities: ['Minor Arcane Beam', 'Minor Group Heal']}]
         });
+
+        game.addCharacterClass('Warden', 'The warden seeks to protect life wherever they can. They would sooner heal an ally than attack a foe.', ['Minor Heal', 'Minor Group Heal'], 1, 3, 4, 4, 2, 2, 15, 4, 14, {
+            stats: {
+                strength: 0.10,
+                wisdom: 0.75,
+                defense: 0.90,
+                resilience: 0.95,
+                dexterity: 0.4,
+                evasion: 0.3,
+                luck: 0.55,
+                speed: 5,
+                maxHealth: 4
+            },
+            abilities: [{level: 2, availableAbilities: 'Minor Arcane Beam'}, {level: 5, availableAbilities: ['Minor Arcane Barrage', 'Slice']}]
+        });
     }
 
+    /*
+    This function initializes the enemies in the game
+    Parameters:
+        Game: The game being initialized
+    Returns:
+        None; creates enemies in the game
+    */
     initializeEnemies(game) {
         //Initialize Enemies
         game.addEnemy("Enemy 1", ["Punch","Minor Arcane Beam", "Slice", "Minor Heal"], 5, 5, 5, 5, 5, 5, 25, 25, 5, 50, []);
         game.addEnemy("Enemy 2", ["Minor Group Heal", "Minor Arcane Beam", "Sweep"], 5, 5, 5, 5, 5, 5, 25, 25, 5, 50, []);
     }
 
+    /*
+    This function initializes the allies in the game
+    Parameters:
+        Game: The game being initialized
+    Returns:
+        None; creates allies in the game
+    */
     initializeAllies(game) {
         //Initialize Allies
         game.addAlly("Ally 1", [ "Minor Heal", "Minor Arcane Beam", "Minor Arcane Barrage" ], 5, 5, 5, 5, 5, 5, 25, 25, 5, 50, []);
     }
 
+    /*
+    This function checks for multiple players and initializes each player
+    Parameters:
+        Game: The game being initialized
+    Returns:
+        None; creates players in the game with base stats based on character class
+    */
     initializePlayers(game) {
-        var numPlayers = UI.checkForUserApproval("How many players would like to play?", "Are you sure the number of players that would like to play is ");
+        const validatePlayerNumber = (numPlayers) => {
+            if(parseInt(numPlayers) > 8 || isNaN(parseInt(numPlayers)) || parseInt(numPlayers) <= 0) {
+                UI.messageUser("Please select a number between 1 and 8.", 1);
+                return 0;
+            }
+            else {
+                return 1;
+            }
+        }
+        var numPlayers = UI.checkForUserApproval("How many players would like to play?", "Are you sure the number of players that would like to play is ", validatePlayerNumber);
         //Initialize Players
         for(var i = 0; i < numPlayers; i++) {
             this.initializePlayer(game);
@@ -120,6 +195,23 @@ class Initializer {
         var charClass = game.getCharacterClassByName(character.class);
         game.addPlayer(character.name, charClass.name, charClass.abilities, charClass.baseStats.strength, charClass.baseStats.wisdom, charClass.baseStats.defense, charClass.baseStats.resilience, charClass.baseStats.dexterity, charClass.baseStats.evasion, charClass.baseStats.maxHealth, charClass.baseStats.maxHealth, charClass.baseStats.luck, charClass.baseStats.speed, []);
         UI.messageUser(character.name + " has joined the battle!");
+    }
+
+
+    /*
+    This function will initialize status effects when any characters are constructed with pre-determined status effects
+     Parameters:
+        Game: the game being initialized
+     Returns:
+        None; applies status effects to characters, including
+     */
+    initializeStatusEffectsOnCharacters(game) {
+        const characters = game.players.concat(game.allies).concat(game.enemies);
+        for (var i = 0; i < characters.length; i++) {
+            for(var j = 0; j < characters[i].statusEffects.length; j++) {
+                characters[i].applyStatusEffect(this.getStatusEffectByName(characters[i].statusEffects[j].statusEffect));
+            }
+        }
     }
 }
 
