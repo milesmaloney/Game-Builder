@@ -34,6 +34,63 @@ class UI {
         console.log(tabString + message);
     }
 
+
+    /*
+    This function prompts a new player for their starting customization
+    Parameters:
+        Game: The game the player is being added to
+    Returns:
+        Object:
+            Name: The name of the new player
+            Class: The class of the new player
+    */
+    promptforNewPlayer(game) {
+        var characterName = this.checkForUserApproval("What would you like to name your character?", "Are you sure you would like to name your character ");
+        this.messageUser("Classes: ");
+        for(var i = 0; i < game.characterClasses.length; i++) {
+            this.messageUser(game.characterClasses[i].promptString(), 3);
+        }
+        const classValidityCheck = (className) => {
+            if(game.getCharacterClassByName(className) !== -1) {
+                return 1;
+            }
+            else{
+                this.messageUser(className + " does not exist as a class. Please try again.");
+                return 0;
+            }
+        }
+        var className = this.checkForUserApproval("What class would you like your character to be?", "Are you sure you would like to be a ", classValidityCheck);
+        return {name: characterName, class: className};
+    }
+
+
+    /*
+    This function checks for a user's approval on a user input and checks any functions passed to validate the user's input
+    Parameters:
+        Query: The query to ask for the user's input
+        Followup: The followup to the user to validate their input
+        Validity Check (optional): A function to validate the user's input
+    Returns:
+        Input: Returns the user input that passed the validity check and user check
+    */
+    checkForUserApproval(query, followup, validityCheck = undefined) {
+        var check = 'n';
+        while(check.toLowerCase() === 'no' || check.toLowerCase() === 'n') {
+            var input = this.getUserInput(query);
+            if(typeof validityCheck !== 'undefined') {
+                if(!validityCheck(input)) {
+                    continue;
+                }
+            }
+            check = this.getUserInput(followup + input + "? Please Type Y/N for yes/no.");
+            if(check.toLowerCase() !== 'yes' && check.toLowerCase() !== 'y') {
+                check = 'n';
+            }
+        }
+        return input;
+    }
+
+
     /*
     This function will prompt the player for which enemy (singular) they want to attack and return the enemy object
     Parameters:
@@ -181,6 +238,15 @@ class UI {
         }
     }
 
+    /*
+    This function prompts the user for which targets they want to affect
+    Parameters:
+        Game: The game we are targetting characters in
+        Character: The character that is using an ability
+        Ability: The ability being used
+    Returns:
+        Selected Targets: An array of targets selected by the user
+    */
     promptForTargets(game, character, ability) {
         var availableTargets = ability.getAvailableTargets(game, character);
         var selectedTargets = []
