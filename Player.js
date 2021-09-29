@@ -24,20 +24,10 @@ class Player extends Character {
         this.type = 'player';
         this.className = className;
         this.level = 1;
+        this.experience = 0;
     }
 
-    /*
-    This function handles the initialization of a player character
-    Parameters:
-        Game: The game the player is being added to.
-    Returns:
-        None; The player will be added to the game specified in parameters.
-    */
-    initializePlayer(game) {
-        var character = UI.promptforNewPlayer(game);
-        var charClass = game.getCharacterClassByName(character.class);
-        game.addPlayer(character.name, charClass.name, charClass.abilities, charClass.baseStats.strength, charClass.baseStats.wisdom, charClass.baseStats.defense, charClass.baseStats.resilience, charClass.baseStats.dexterity, charClass.baseStats.evasion, charClass.baseStats.maxHealth, charClass.baseStats.maxHealth, charClass.baseStats.luck, charClass.baseStats.speed, []);
-    }
+
 
     /*
     This function handles a player leveling up

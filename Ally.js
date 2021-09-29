@@ -18,9 +18,12 @@ Enemy attributes and their effects:
     Type: specifies that this character is an ally
 */
 class Ally extends Character {
-    constructor(name, abilities, strength, defense, wisdom, resilience, dexterity, evasion, maxHealth, currentHealth, luck, speed, statusEffects) {
+    constructor(name, className, abilities, strength, defense, wisdom, resilience, dexterity, evasion, maxHealth, currentHealth, luck, speed, statusEffects) {
         super(name, abilities, strength, defense, wisdom, resilience, dexterity, evasion, maxHealth, currentHealth, luck, speed, statusEffects);
         this.type = 'ally';
+        this.className = className;
+        this.level = 1;
+        this.experience = 0;
     }
 }
 

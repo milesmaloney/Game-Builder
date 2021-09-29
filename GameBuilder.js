@@ -119,7 +119,7 @@ class Game {
             }
             //Catches unidentified character type
             else {
-                console.log("ERROR: The character's type is unkown.");
+                UI.messageUser("ERROR: The character's type is unkown.");
             }
         }
     }
@@ -277,6 +277,9 @@ class Game {
     */
     takeEnemyTurn(enemy) {
         var turnUse = this.selectAIEnemyAbilityAndTargets(enemy);
+        if(turnUse === -1) {
+            return;
+        }
         this.useAbility(turnUse.ability, enemy, turnUse.targets);
     }
 
@@ -289,6 +292,9 @@ class Game {
     */
     takeAllyTurn(ally) {
         var turnUse = this.selectAIAllyAbilityAndTargets(ally);
+        if(turnUse === -1) {
+            return;
+        }
         this.useAbility(turnUse.ability, ally, turnUse.targets);
     }
 
@@ -316,19 +322,34 @@ class Game {
             if(alliesState.largestPercentHealthMissing >= 60) {
                 //Single target attacking ability on highest % missing hp ally
                 selectedAbility = this.selectAbility(availableAbilities, 0, 'enemy');
-                selectedTargets = [alliesState.largestPercentHealthMissingObject];
+                if(selectedAbility === -1) {
+                    selectedAbility = undefined;
+                }
+                else {
+                    selectedTargets = [alliesState.largestPercentHealthMissingObject];
+                }
             }
         }
         else if(this.allies.length > 1) {
             if(alliesState.largestDeviationValue > 50) {
                 //Single target attacking ability on highest % missing hp ally
                 selectedAbility = this.selectAbility(availableAbilities, 0, 'enemy');
-                selectedTargets = [alliesState.largestPercentHealthMissingObject];
+                if(selectedAbility === -1) {
+                    selectedAbility = undefined;
+                }
+                else {
+                    selectedTargets = [alliesState.largestPercentHealthMissingObject];
+                }
             }
             else if(alliesState.largestDeviationValue <= 50 && alliesState.averageMissingHealth >= 20) {
                 //AOE attacking ability on multiple allies
                 selectedAbility = this.selectAbility(availableAbilities, 1, 'enemy');
-                selectedTargets = this.selectTargets(selectedAbility, character);
+                if(selectedAbility === -1) {
+                    selectedAbility = undefined;
+                }
+                else {
+                    selectedTargets = this.selectTargets(selectedAbility, character);
+                }
             }
         }
         //Then considers attacking low health player
@@ -336,19 +357,34 @@ class Game {
             if(playerState.largestPercentHealthMissing >= 70) {
                 //Single target attacking ability on highest % missing hp player
                 selectedAbility = this.selectAbility(availableAbilities, 0, 'enemy');
-                selectedTargets = this.selectTargets(selectedAbility, character);
+                if(selectedAbility === -1) {
+                    selectedAbility = undefined;
+                }
+                else {
+                    selectedTargets = this.selectTargets(selectedAbility, character);
+                }
             }
         }
         else if(this.players.length > 1) {
             if(playerState.largestDeviationValue > 25) {
                 //Single target attacking ability on highest % missing hp player
                 selectedAbility = this.selectAbility(availableAbilities, 0, 'enemy');
-                selectedTargets = this.selectTargets(selectedAbility, character);
+                if(selectedAbility === -1) {
+                    selectedAbility = undefined;
+                }
+                else {
+                    selectedTargets = this.selectTargets(selectedAbility, character);
+                }
             }
             else if(playerState.largestDeviationValue <= 25 && playerState.averageMissingHealth >= 45) {
                 //AOE attacking ability on multiple players
                 selectedAbility = this.selectAbility(availableAbilities, 1, 'enemy');
-                selectedTargets = this.selectTargets(selectedAbility, character);
+                if(selectedAbility === -1) {
+                    selectedAbility = undefined;
+                }
+                else {
+                    selectedTargets = this.selectTargets(selectedAbility, character);
+                }
             }
         }
         //Finally consider enemies for healing
@@ -356,19 +392,34 @@ class Game {
             if(enemiesState.largestPercentHealthMissing >= 85) {
                 //Single target healing ability on highest % missing hp enemy
                 selectedAbility = this.selectAbility(availableAbilities, 0, 'ally');
-                selectedTargets = [enemiesState.largestPercentHealthMissingObject];
+                if(selectedAbility === -1) {
+                    selectedAbility = undefined;
+                }
+                else {
+                    selectedTargets = [enemiesState.largestPercentHealthMissingObject];
+                }
             }
         }
         else if(this.enemies.length > 1) {
             if(enemiesState.largestDeviationValue > 65) {
                 //Single target healing ability on highest % missing hp enemy
                 selectedAbility = this.selectAbility(availableAbilities, 0, 'ally');
-                selectedTargets = [enemiesState.largestPercentHealthMissingObject];
+                if(selectedAbility === -1) {
+                    selectedAbility = undefined;
+                }
+                else {
+                    selectedTargets = [enemiesState.largestPercentHealthMissingObject];
+                }
             }
             else if(enemiesState.largestDeviationValue <= 40 && enemiesState.averageMissingHealth >= 70) {
                 //AOE healing ability on multiple enemies
                 selectedAbility = this.selectAbility(availableAbilities, 1, 'ally');
-                selectedTargets = this.selectTargets(selectedAbility, character);
+                if(selectedAbility === -1) {
+                    selectedAbility = undefined;
+                }
+                else {
+                    selectedTargets = this.selectTargets(selectedAbility, character);
+                }
             }
         }
         if(typeof(selectedAbility) === 'undefined') {
@@ -378,6 +429,10 @@ class Game {
             }
             //Random ability on random target(s)
             selectedAbility = this.selectAbility(availableAbilities, 'unspecified', 'unspecified');
+            if(selectedAbility === -1) {
+                UI.messageUser(character.name + " decided to pass on this turn.");
+                return -1;
+            }
             selectedTargets = this.selectTargets(selectedAbility, character);
         }
         UI.messageUser(character.name + " is using " + selectedAbility.name + ".");
@@ -409,19 +464,34 @@ class Game {
             if(playerState.largestPercentHealthMissing >= 50) {
                 //Single target healing ability on highest % missing hp player
                 selectedAbility = this.selectAbility(availableAbilities, 0, 'ally');
-                selectedTargets = [playerState.largestPercentHealthMissingObject];
+                if(selectedAbility === -1) {
+                    selectedAbility = undefined;
+                }
+                else {
+                    selectedTargets = [playerState.largestPercentHealthMissingObject];
+                }
             }
         }
         else if(this.players.length > 1) {
             if(playerState.largestDeviationValue > 25) {
                 //Single target healing ability on highest % missing hp player
                 selectedAbility = this.selectAbility(availableAbilities, 0, 'ally');
-                selectedTargets = [playerState.largestPercentHealthMissingObject];
+                if(selectedAbility === -1) {
+                    selectedAbility = undefined;
+                }
+                else {
+                    selectedTargets = [playerState.largestPercentHealthMissingObject];
+                }
             }
             else if(playerState.largestDeviationValue <= 25 && playerState.averageMissingHealth >= 45) {
                 //AOE healing ability on multiple players
                 selectedAbility = this.selectAbility(availableAbilities, 1, 'ally');
-                selectedTargets = this.selectTargets(selectedAbility, character);
+                if(selectedAbility === -1) {
+                    selectedAbility = undefined;
+                }
+                else {
+                    selectedTargets = this.selectTargets(selectedAbility, character);
+                }
             }
         }
         //Then considers healing wounded allies
@@ -429,19 +499,34 @@ class Game {
             if(alliesState.largestPercentHealthMissing >= 65) {
                 //Single target healing ability on highest % missing hp ally
                 selectedAbility = this.selectAbility(availableAbilities, 0, 'ally');
-                selectedTargets = [alliesState.largestPercentHealthMissingObject];
+                if(selectedAbility === -1) {
+                    selectedAbility = undefined;
+                }
+                else {
+                    selectedTargets = [alliesState.largestPercentHealthMissingObject];
+                }
             }
         }
         else if(this.allies.length > 1) {
             if(alliesState.largestDeviationValue > 50) {
                 //Single target healing ability on highest % missing hp ally
                 selectedAbility = this.selectAbility(availableAbilities, 0, 'ally');
-                selectedTargets = [alliesState.largestPercentHealthMissingObject];
+                if(selectedAbility === -1) {
+                    selectedAbility = undefined;
+                }
+                else {
+                    selectedTargets = [alliesState.largestPercentHealthMissingObject];
+                }
             }
             else if(alliesState.largestDeviationValue <= 50 && alliesState.averageMissingHealth >= 60) {
                 //AOE healing ability on multiple allies
                 selectedAbility = this.selectAbility(availableAbilities, 1, 'ally');
-                selectedTargets = this.selectTargets(selectedAbility, character);
+                if(selectedAbility === -1) {
+                    selectedAbility = undefined;
+                }
+                else {
+                    selectedTargets = this.selectTargets(selectedAbility, character);
+                }
             }
         }
         //Finally consider enemies for attacking
@@ -449,19 +534,34 @@ class Game {
             if(enemiesState.largestPercentHealthMissing >= 85) {
                 //Single target attacking ability on highest % missing hp enemy
                 selectedAbility = this.selectAbility(availableAbilities, 0, 'enemy');
-                selectedTargets = [enemiesState.largestPercentHealthMissingObject];
+                if(selectedAbility === -1) {
+                    selectedAbility = undefined;
+                }
+                else {
+                    selectedTargets = [enemiesState.largestPercentHealthMissingObject];
+                }
             }
         }
         else if(this.enemies.length > 1) {
             if(enemiesState.largestDeviationValue > 40) {
                 //Single target attacking ability on highest % missing hp enemy
                 selectedAbility = this.selectAbility(availableAbilities, 0, 'enemy');
-                selectedTargets = [enemiesState.largestPercentHealthMissingObject];
+                if(selectedAbility === -1) {
+                    selectedAbility = undefined;
+                }
+                else {
+                    selectedTargets = [enemiesState.largestPercentHealthMissingObject];
+                }
             }
             else if(enemiesState.largestDeviationValue <= 40 && enemiesState.averageMissingHealth >= 60) {
                 //AOE attacking ability on multiple enemies
                 selectedAbility = this.selectAbility(availableAbilities, 1, 'enemy');
-                selectedTargets = this.selectTargets(selectedAbility, character);
+                if(selectedAbility === -1) {
+                    selectedAbility = undefined;
+                }
+                else {
+                    selectedTargets = this.selectTargets(selectedAbility, character);
+                }
             }
         }
         if(typeof(selectedAbility) === 'undefined') {
@@ -471,6 +571,10 @@ class Game {
             }
             //Random ability on random target(s)
             selectedAbility = this.selectAbility(availableAbilities, 'unspecified', 'unspecified');
+            if(selectedAbility === -1) {
+                UI.messageUser(character.name + " has decided to pass on this turn.");
+                return -1;
+            }
             selectedTargets = this.selectTargets(selectedAbility, character);
         }
         UI.messageUser(character.name + " is using " + selectedAbility.name + ".");
@@ -487,6 +591,9 @@ class Game {
         Ability: An ability randomly selected from the abilities available that fit the standards specified
     */
     selectAbility(abilities, isAOE, targetType) {
+        if(abilities.length === 0) {
+            return -1;
+        }
         if(isAOE !== 'unspecified') {
             if(isAOE) {
                 abilities = abilities.filter(item => item.numTargets > 1);
@@ -577,7 +684,6 @@ class Game {
         None; removes damage from enemy's current health if the attack is successful
     */
     attackEnemies(character, enemies, ability) {
-        //TEST: console.log(enemies);
         for(var i = 0; i < enemies.length; i++) {
             //Checks whether the attack hits or misses
             if(!Calculator.calculateHitOrMissDamage(character, enemies[i], ability)) {
@@ -757,8 +863,8 @@ class Game {
         this.characterClasses.push(new CharacterClass(className, description, abilities, baseStrength, baseWisdom, baseDefense, baseResilience, baseDexterity, baseEvasion, baseSpeed, baseLuck, baseMaxHP, classLevelUps));
     }
 
-    addAlly(name, abilities, strength, defense, wisdom, resilience, dexterity, evasion, maxHealth, currentHealth, luck, speed, statusEffects) {
-        var ally = new Ally(name, abilities, strength, defense, wisdom, resilience, dexterity, evasion, maxHealth, currentHealth, luck, speed, statusEffects);
+    addAlly(name, className, abilities, strength, defense, wisdom, resilience, dexterity, evasion, maxHealth, currentHealth, luck, speed, statusEffects) {
+        var ally = new Ally(name, className, abilities, strength, defense, wisdom, resilience, dexterity, evasion, maxHealth, currentHealth, luck, speed, statusEffects);
         for(var i = 0; i < statusEffects.length; i++) {
             ally.reduceStatsByStatusEffect(this.getStatusEffectByName(statusEffects[i].statusEffect));
         }
@@ -771,6 +877,41 @@ class Game {
             enemy.reduceStatsByStatusEffect(this.getStatusEffectByName(statusEffects[i].statusEffect));
         }
         this.enemies.push(enemy);
+    }
+
+    addEnemyByType(stats, type) {
+        switch(type) {
+            //Skeleton
+            case 0:
+                var numSkeletons = this.enemies.filter(item => item.name.includes('Skeleton')).length;
+                if(numSkeletons >= 4 || this.enemies.length >= 12) {
+                    return -1;
+                }
+                else {
+                    this.addEnemy("Skeleton " + (numSkeletons + 1), ['Punch', 'Minor Arcane Beam'], parseInt(stats.strength + 1), parseInt(stats.defense), parseInt(stats.wisdom), parseInt(stats.resilience), parseInt(stats.dexterity), parseInt(stats.evasion), parseInt(stats.maxHealth), parseInt(stats.maxHealth), parseInt(stats.luck), parseInt(stats.speed), []);
+                }
+                break;
+            //Sorceror
+            case 1:
+                var numSorcerers = this.enemies.filter(item => item.name.includes('Sorcerer')).length;
+                if(numSorcerers >= 4 || this.enemies.length >= 12) {
+                    return -1;
+                }
+                else {
+                    this.addEnemy("Sorcerer " + (numSorcerers + 1), ['Minor Arcane Barrage', 'Minor Arcane Beam'], parseInt(stats.strength), parseInt(stats.defense), parseInt(stats.wisdom + 2), parseInt(stats.resilience), parseInt(stats.dexterity), parseInt(stats.evasion), parseInt(stats.maxHealth), parseInt(stats.maxHealth), parseInt(stats.luck), parseInt(stats.speed), []);
+                }
+                break;
+            //Cultist
+            case 2:
+                var numCultists = this.enemies.filter(item => item.name.includes('Cultist')).length;
+                if(numCultists >= 4 || this.enemies.length >= 12) {
+                    return -1;
+                }
+                else {
+                    this.addEnemy("Cultist " + (numCultists + 1), ['Minor Heal', 'Minor Group Heal'], parseInt(stats.strength), parseInt(stats.defense + 1), parseInt(stats.wisdom), parseInt(stats.resilience + 1), parseInt(stats.dexterity), parseInt(stats.evasion), parseInt(stats.maxHealth), parseInt(stats.maxHealth), parseInt(stats.luck), parseInt(stats.speed), []);
+                }
+                break;
+        }
     }
 }
 

@@ -1,4 +1,6 @@
 const UI = require('./UI.js');
+const Calculator = require('./Calculator.js');
+
 
 class Initializer {
     constructor() {
@@ -15,9 +17,9 @@ class Initializer {
         this.initializeStatusEffects(game);
         this.initializeAbilities(game);
         this.initializeCharacterClasses(game);
-        this.initializeEnemies(game);
         this.initializeAllies(game);
         this.initializePlayers(game);
+        this.initializeEnemies(game);
         this.initializeStatusEffectsOnCharacters(game);
         return game;
     }
@@ -60,6 +62,9 @@ class Initializer {
     */
     initializeAbilities(game) {
         //Initialize abilities (100 targets = all targets)
+        //Generic Pass Ability
+        game.addAbility("Pass", "none", 0, 0, 'ally', 0, 0, 'wisdom', 0.0);
+
         //Single Target Physical Attacks
         game.addAbility("Slice", "bleeding", 33, 1, "enemy", 1, 90, "strength", 0.66);
         game.addAbility("Punch", "none", 0, 0, "enemy", 1, 100, "strength", 1.0);
@@ -143,8 +148,80 @@ class Initializer {
     */
     initializeEnemies(game) {
         //Initialize Enemies
-        game.addEnemy("Enemy 1", ["Punch","Minor Arcane Beam", "Slice", "Minor Heal"], 5, 5, 5, 5, 5, 5, 25, 25, 5, 50, []);
-        game.addEnemy("Enemy 2", ["Minor Group Heal", "Minor Arcane Beam", "Sweep"], 5, 5, 5, 5, 5, 5, 25, 25, 5, 50, []);
+        for(var i = 0; i < 3; i++) {
+            this.initializeEnemy(game);
+        }
+    }
+
+    initializeEnemy(game) {
+        var playerParty = game.players.concat(game.allies);
+        var statSummation = {strength: 0, wisdom: 0, defense: 0, resilience: 0, dexterity: 0, evasion: 0, luck: 0, speed: 0, maxHealth: 0};
+        for(var i = 0; i <  playerParty.length; i++) {
+            statSummation.strength += playerParty[i].stats.strength;
+            statSummation.wisdom += playerParty[i].stats.wisdom;
+            statSummation.defense += playerParty[i].stats.defense;
+            statSummation.resilience += playerParty[i].stats.resilience;
+            statSummation.dexterity += playerParty[i].stats.dexterity;
+            statSummation.evasion += playerParty[i].stats.evasion;
+            statSummation.luck += playerParty[i].stats.luck;
+            statSummation.speed += playerParty[i].stats.speed;
+            statSummation.maxHealth += playerParty[i].stats.maxHealth;
+        }
+        statSummation.strength /= playerParty.length;
+        statSummation.wisdom /= playerParty.length;
+        statSummation.defense /= playerParty.length;
+        statSummation.resilience /= playerParty.length;
+        statSummation.dexterity /= playerParty.length;
+        statSummation.evasion /= playerParty.length;
+        statSummation.luck /= playerParty.length;
+        statSummation.speed /= playerParty.length;
+        statSummation.maxHealth /= playerParty.length;
+        var numRandomDecreases = Calculator.calculateRandom(0, 9);
+        var numRandomIncreases = Calculator.calculateRandom(0, 9);
+        for(var i = 0; i < Math.max(numRandomDecreases, numRandomDecreases); i++) {
+            if(numRandomIncreases !== 0) {
+                this.randomlyChangeStatFromStatSummation(statSummation, 1.1);
+            }
+            if(numRandomDecreases !== 0) {
+                this.randomlyChangeStatFromStatSummation(statSummation, 0.9);
+            }
+        }
+        game.addEnemyByType(statSummation, Calculator.calculateRandom(0, 2));
+    }
+
+
+
+    randomlyChangeStatFromStatSummation(object, change) {
+        var randomStat = Calculator.calculateRandom(1, 9);
+        switch(randomStat) {
+            case 1:
+                object.strength *= change;
+                break;
+            case 2:
+                object.wisdom *= change;
+                break;
+            case 3:
+                object.defense *= change;
+                break;
+            case 4:
+                object.resilience *= change;
+                break;
+            case 5:
+                object.dexterity *= change;
+                break;
+            case 6:
+                object.evasion *= change;
+                break;
+            case 7:
+                object.luck *= change;
+                break;
+            case 8:
+                object.speed *= change;
+                break;
+            case 9:
+                object.maxHealth *= change;
+                break;
+        }
     }
 
     /*
@@ -155,8 +232,13 @@ class Initializer {
         None; creates allies in the game
     */
     initializeAllies(game) {
-        //Initialize Allies
-        game.addAlly("Ally 1", [ "Minor Heal", "Minor Arcane Beam", "Minor Arcane Barrage" ], 5, 5, 5, 5, 5, 5, 25, 25, 5, 50, []);
+        var randomClass = game.characterClasses[Calculator.calculateRandom(0, game.characterClasses.length - 1)];
+        //Reroll once if the random class matches that of an existing player
+        if(game.players.filter(item => item.className === randomClass.name) >= 1) {
+            randomClass = game.characterClasses[Calculator.calculateRandom(0, game.characterClasses.length - 1)];
+        }
+        var numClassExisting = game.allies.filter(item => item.className = randomClass.name);
+        game.addAlly(randomClass.name + " " + (numClassExisting + 1), randomClass.name, randomClass.abilities, randomClass.baseStats.strength, randomClass.baseStats.defense, randomClass.baseStats.wisdom, randomClass.baseStats.resilience, randomClass.baseStats.dexterity, randomClass.baseStats.evasion, randomClass.baseStats.maxHealth, randomClass.baseStats.maxHealth, randomClass.baseStats.luck, randomClass.baseStats.speed, []);
     }
 
     /*
