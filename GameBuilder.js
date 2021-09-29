@@ -1,11 +1,13 @@
 const { all } = require('async');
 var StatusEffect = require('./StatusEffect.js');
 var Ability = require('./Ability.js');
+var CharacterClass = require('./CharacterClass.js');
 var Player = require('./Player.js');
 var Enemy = require('./Enemy.js');
 var Ally = require('./Ally.js');
 const UI = require('./UI.js');
 const Calculator = require('./Calculator.js');
+const Initializer = require('./Initializer.js');
 
 
 
@@ -20,8 +22,9 @@ Attributes:
     Status Effects: The status effects available in the game
 */
 class Game {
-    constructor(players, enemies, allies, abilities, statusEffects) {
+    constructor(players, characterClasses, enemies, allies, abilities, statusEffects) {
         this.players = players;
+        this.characterClasses = characterClasses;
         this.enemies = enemies;
         this.allies = allies;
         this.abilities = abilities;
@@ -724,6 +727,15 @@ class Game {
         return -1;
     }
 
+    getCharacterClassByName(name) {
+        for(var i = 0; i < this.characterClasses.length; i++) {
+            if(this.characterClasses[i].name === name) {
+                return this.characterClasses[i];
+            }
+        }
+        return -1;
+    }
+
     getAbilityByName(name) {
         for(var i = 0; i < this.abilities.length; i++) {
             if(this.abilities[i].name === name) {
@@ -751,12 +763,16 @@ class Game {
         this.abilities.push(new Ability(name, statusEffect, duration, chance, targetType, numTargets, accuracy, modifier, multiplier));
     }
 
-    addPlayer(name, abilities, strength, defense, wisdom, resilience, dexterity, evasion, maxHealth, currentHealth, luck, speed, statusEffects) {
-        var player = new Player(name, abilities, strength, defense, wisdom, resilience, dexterity, evasion, maxHealth, currentHealth, luck, speed, statusEffects);
+    addPlayer(name, className, abilities, strength, defense, wisdom, resilience, dexterity, evasion, maxHealth, currentHealth, luck, speed, statusEffects) {
+        var player = new Player(name, className, abilities, strength, defense, wisdom, resilience, dexterity, evasion, maxHealth, currentHealth, luck, speed, statusEffects);
         for(var i = 0; i < statusEffects.length; i++) {
             player.reduceStatsByStatusEffect(this.getStatusEffectByName(statusEffects[i].statusEffect));
         }
         this.players.push(player);
+    }
+
+    addCharacterClass(className, description, abilities, baseStrength, baseWisdom, baseDefense, baseResilience, baseDexterity, baseEvasion, baseSpeed, baseLuck, baseMaxHP, classLevelUps) {
+        this.characterClasses.push(new CharacterClass(className, description, abilities, baseStrength, baseWisdom, baseDefense, baseResilience, baseDexterity, baseEvasion, baseSpeed, baseLuck, baseMaxHP, classLevelUps));
     }
 
     addAlly(name, abilities, strength, defense, wisdom, resilience, dexterity, evasion, maxHealth, currentHealth, luck, speed, statusEffects) {
@@ -776,70 +792,12 @@ class Game {
     }
 }
 
-/*Creates a new empty game */
-var myGame = new Game([],[],[],[],[]);
+module.exports = Game;
 
-
-//Functional status effects
-myGame.addStatusEffect("stunned", "Stunned characters lose their turn", 1);
-myGame.addStatusEffect("harmless", "Harmless characters cannot use any attacks.", 0, 1);
-myGame.addStatusEffect("silenced", "Silenced characters cannot use magic on their turn", 0, 0, 1);
-myGame.addStatusEffect("immobilized", "Immobilized characters cannot use physical attacks on their turn.", 0, 0, 0, 1);
-myGame.addStatusEffect("hopeless", "Hopeless characters will refuse healing from allies", 0, 0, 0, 0, 1);
-myGame.addStatusEffect("selfish", "Selfish characters will not cast any spells on their allies", 0, 0, 0, 0, 0, 1);
-
-
-
-
-//Damage reduction status effects
-myGame.addStatusEffect("unfocused", "Unfocused characters have their magic damage reduced by 25%", 0, 0, 0, 0, 0, 0, 0, 25);
-myGame.addStatusEffect("disarmed", "Disarmed characters have their physical damage reduced by 25%", 0, 0, 0, 0, 0, 0, 0, 0, 25);
-
-//Stat status effects
-myGame.addStatusEffect("weakened", "Weakened characters have their strength reduced by 50%", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, [{ statReduced: "strength", reducedBy: 50 }]);
-myGame.addStatusEffect("exposed", "Exposed characters have their defense reduced by 50%", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, [{ statReduced: "defense", reducedBy: 50 }]);
-myGame.addStatusEffect("confused", "Confused characters have their wisdom reduced by 50%", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, [{ statReduced: "wisdom", reducedBy: 50 }]);
-myGame.addStatusEffect("intimidated", "Intimidated characters have their resilience reduced by 50%", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, [{ statReduced: "resilience", reducedBy: 50 }]);
-myGame.addStatusEffect("dazed", "Dazed characters have their dexterity reduced by 50%", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, [{ statReduced: "dexterity", reducedBy: 50 }]);
-myGame.addStatusEffect("surrounded", "Surrounded characters have their evasion reduced by 50%", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, [{ statReduced: "evasion", reducedBy: 50 }]);
-myGame.addStatusEffect("cursed", "Cursed opponents have their luck reduced by 50%", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,[{ statReduced: "luck", reducedBy: 50 }]);
-myGame.addStatusEffect("slowed", "Slowed characters have their speed reduced by 50%", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, [{ statReduced: "speed", reducedBy: 50 }]);
-
-//Damage status effect
-myGame.addStatusEffect("bleeding", "Bleeding characters will take damage at the end of each turn rotation", 0, 0, 0, 0, 0, 0, 0, 0, 0, 1);
-
-//Base status effect (for abilities, not characters)
-myGame.addStatusEffect("none", "Abilities with no status effect behave as normal");
-
-//Initialize abilities (100 targets = all targets)
-//Single Target Physical Attacks
-myGame.addAbility("Slice", "bleeding", 33, 1, "enemy", 1, 90, "strength", 0.66);
-myGame.addAbility("Punch", "none", 0, 0, "enemy", 1, 100, "strength", 1.0);
-
-//Multi Target Physical Attacks
-myGame.addAbility("Sweep", "none", 0, 0, "enemy", 12, 70, "strength", 0.5);
-
-//Single Target Healing Abilities
-myGame.addAbility("Minor Heal", "none", 0, 0, "ally", 1, 100, "wisdom", 0.5);
-
-//Multi Target Healing Abilities
-myGame.addAbility("Minor Group Heal", "none", 0, 0, "ally", 12, 70, "wisdom", 0.25);
-
-//Single Target Magical Attacks
-myGame.addAbility("Minor Arcane Beam", "none", 0, 0, "enemy", 1, 80, "wisdom", 1.0);
-
-//Multi Target Magical Attacks
-myGame.addAbility("Minor Arcane Barrage", "none", 0, 0, "enemy", 12, 70, "wisdom", 0.4);
-
-//Initialize Players
-myGame.addPlayer("Player 1", [ "Slice", "Sweep", "Minor Heal", "Minor Group Heal", "Minor Arcane Beam", "Minor Arcane Barrage"], 5, 5, 5, 5, 5, 5, 25, 25, 5, 50, []);
-
-//Initialize Allies
-myGame.addAlly("Ally 1", [ "Minor Heal", "Minor Arcane Beam", "Minor Arcane Barrage" ], 5, 5, 5, 5, 5, 5, 25, 25, 5, 50, []);
-
-//Initialize Enemies
-myGame.addEnemy("Enemy 1", ["Punch","Minor Arcane Beam", "Slice", "Minor Heal"], 5, 5, 5, 5, 5, 5, 25, 25, 5, 50, []);
-myGame.addEnemy("Enemy 2", ["Minor Group Heal", "Minor Arcane Beam", "Sweep"], 5, 5, 5, 5, 5, 5, 25, 25, 5, 50, []);
+//Initialize Game
+var myGame = new Game([],[],[],[],[],[]);
+myGame = Initializer.initializeGame(myGame);
 
 //Play current game
 myGame.playGame();
+

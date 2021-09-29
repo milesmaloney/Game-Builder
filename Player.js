@@ -19,9 +19,10 @@ Player attributes and their effects:
     Type: specifies that this character is a player character
 */
 class Player extends Character {
-    constructor(name, abilities, strength, defense, wisdom, resilience, dexterity, evasion, maxHealth, currentHealth, luck, speed, statusEffects) {
+    constructor(name, className, abilities, strength, defense, wisdom, resilience, dexterity, evasion, maxHealth, currentHealth, luck, speed, statusEffects) {
         super(name, abilities, strength, defense, wisdom, resilience, dexterity, evasion,maxHealth, currentHealth, luck, speed, statusEffects);
         this.type = 'player';
+        this.className = className;
         this.level = 1;
     }
 
@@ -33,8 +34,9 @@ class Player extends Character {
         None; The player will be added to the game specified in parameters.
     */
     initializePlayer(game) {
-        var name = UI.getUserInput("What would you like to name your character?");
-        game.addPlayer(name, ["Punch", "Minor Heal", "Minor Arcane Beam"], 5, 3, 5, 3, 5, 3, 10, 10, 0, 25, []);
+        var character = UI.promptforNewPlayer(game);
+        var charClass = game.getCharacterClassByName(character.class);
+        game.addPlayer(character.name, charClass.name, charClass.abilities, charClass.baseStats.strength, charClass.baseStats.wisdom, charClass.baseStats.defense, charClass.baseStats.resilience, charClass.baseStats.dexterity, charClass.baseStats.evasion, charClass.baseStats.maxHealth, charClass.baseStats.maxHealth, charClass.baseStats.luck, charClass.baseStats.speed, []);
     }
 
     /*
