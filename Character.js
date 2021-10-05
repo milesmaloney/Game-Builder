@@ -133,7 +133,6 @@ class Character {
         None; the conditions property will be filled by the properties of the status effect
     */
     applyStatusEffect(statusEffect) {
-        //TEST: console.log(statusEffect);
         if(statusEffect.endsTurn) {
             this.conditions.hasTurn = 0;
         }
@@ -225,7 +224,6 @@ class Character {
                 }
             }
         }
-        //TEST: console.log("boolean conditions: " + booleanConditions);
         //Goes through boolean conditions array to determine character's status conditions
         if(!booleanConditions[0]) {
             this.conditions.hasTurn = 1;
@@ -352,16 +350,28 @@ class Character {
     }
 
 
+    /*
+    This function updates the stat reduction to reflect the amount the stat has been changed by
+    Parameters:
+        Stat: The stat being reduced
+        Change: The amount (%) it is being changed by
+    Returns:
+        None; updates the stat to give the original stat change %
+    */
     updateStatReduction(stat, change) {
-        //TEST: console.log("stat before: " + stat)
-        //TEST: console.log("change: " + change);
         //gets the original stat change percentage (e.g. 50 for 50%)
         change = change * 100;
         stat -= stat - (100 - change);
-        //TEST: console.log("stat after: " + stat)
     }
 
 
+    /*
+    This function loops through the stat reductions of a status effect and reduces all of the relevant stats
+    Parameters:
+        Status Effect: The status effect we are reducing stats from
+    Returns:
+        None; changes the character's stats by the stat reductions that exist in the status effect
+    */
     reduceStatsByStatusEffect(statusEffect) {
         if(statusEffect.statsReduced.length !== 0) {
             for(var i = 0; i < statusEffect.statsReduced.length; i++) {

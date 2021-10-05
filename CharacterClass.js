@@ -11,7 +11,7 @@ Attributes:
         Abilities: the abilities to be received on leveling up to certain levels
 */
 class CharacterClass {
-    constructor(className, description, abilities, baseStrength, baseWisdom, baseDefense, baseResilience, baseDexterity, baseEvasion, baseSpeed, baseLuck, baseMaxHP, classLevelUps) {
+    constructor(className, description, abilities, baseStrength, baseDefense, baseWisdom, baseResilience, baseDexterity, baseEvasion, baseSpeed, baseLuck, baseMaxHP, classLevelUps) {
         this.name = className;
         this.description = description;
         this.abilities = abilities;

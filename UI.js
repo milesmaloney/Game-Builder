@@ -91,136 +91,13 @@ class UI {
     }
 
 
-    /*
-    This function will prompt the player for which enemy (singular) they want to attack and return the enemy object
-    Parameters:
-        Reprompt: A boolean value to determine whether or not the player has already failed the prompt
-        Character: The character that is making an attack
-    Returns:
-        Enemy: The enemy to be attacked
-    */
-    promptForEnemy(game, character, reprompt = 0) {
-        var enemyList = game.stealthCheck(game.enemies, character);
-        for(var i = 0; i < enemyList.length; i++) {
-            //TEST: UI.messageUser(enemyList[i].toString());
-            this.messageUser(enemyList[i].promptString(), 3);
-        }
-        if(reprompt) {
-            this.messageUser("Your character doesn't see that enemy anywhere! Please try again.");
-        }
-        var enemyToAttack = this.getUserInput("Which enemy would you like to attack?");
-        var enemy = game.getEnemyByName(enemyToAttack);
-        if(enemy === -1 || (enemy.conditions.isStealthed && !character.conditions.seesStealth)) {
-            return this.promptForEnemy(character, game, 1);
-        }
-        else {
-            return enemy;
-        }
-    }
-    
-
-    /*
-    This function will prompt the player for which enemies they want to attack and return an array of enemy objects
-    Parameters:
-        Number of Enemies: The number of enemies that the ability will hit
-        Character: The character making an attack
-    Returns:
-        Enemies to Attack: An array of enemies that an attack will hit
-    */
-    promptForEnemies(game, character, numEnemies) {
-        //TEST: console.log(character.toString());
-        var enemiesToAttack = [];
-        var enemyList = game.stealthCheck(game.enemies, character);
-        if(numEnemies >= enemyList.length) {
-            this.messageUser("This attack will attempt to hit all enemies.");
-            return enemyList;
-        }
-        while(numEnemies > 0) {
-            if(numEnemies === 1) {
-                this.messageUser("Please select an enemy to attack. You can attack 1 more enemy.");
-            }
-            else {
-                this.messageUser("Please select an enemy to attack. You can attack " + numEnemies.toString() + " more enemies.");
-            }
-            var enemy = this.promptForEnemy(game, character, );
-            enemiesToAttack.push(enemy);
-            numEnemies--;
-        }
-        return enemiesToAttack;
-    }
-    
-
-    /*
-    This function will prompt the player for which ally they want to heal
-    Parameters:
-        Reprompt: A boolean value to determine whether or not the player has already failed the prompt
-    Returns:
-        Ally: The ally to receive healing
-    */
-    promptForAlly(game, character, reprompt = 0) {
-        var allyList = game.stealthCheck(game.allies, character);
-        for(var i = 0; i < allyList.length; i++) {
-            this.messageUser(allyList[i].promptString(), 3);
-        }
-        switch(reprompt) {
-            case 1:
-                this.messageUser("Your character couldn't see that ally. Please try again.");
-                break;
-            case 2:
-                this.messageUser("The selected ally cannot be healed.");
-                break;
-            default:
-                break;
-        }
-        var allyToHeal = this.getUserInput("Which ally would you like to heal?");
-        var ally = game.getAllyByName(allyToHeal);
-        if(ally === -1 || (ally.conditions.isStealthed && !character.conditions.seesStealth)) {
-            return this.promptForAlly(1, character);
-        }
-        else if(!ally.conditions.canReceiveHealing) {
-            return this.promptForAlly(2, character);
-        }
-        else {
-            return ally;
-        }
-    }
-    
-
-    /*
-    This function will prompt the player for which allies they want to heal
-    Parameters:
-        Number of Allies: The number of allies that the player will attempt to heal
-        Reprompt: A boolean value to determine whether or not the player has failed the prompt
-        Allies to Heal: An array of the allies that the ability will heal (default value = empty; used for reprompting)
-    Returns:
-        Allies: An array of allies that the player will attempt to heal
-    */
-    promptForAllies(game, character, numAllies) {
-        var alliesToHeal = [];
-        var allyList = game.stealthCheck(game.allies.concat(game.players), character);
-        if(numAllies >= allyList.length) {
-            this.messageUser("This spell will attempt to heal all allies.");
-            return allyList;
-        }
-        while(numAllies > 0) {
-            this.messageUser("Please select an ally to heal. You can heal " + numAllies.toString() + " more allies.");
-            var ally = this.promptForAlly(game, character);
-            alliesToHeal.push(ally);
-            numAllies--;
-        }
-        return alliesToHeal;
-    }
-
-
     promptForTarget(ability, availableTargets) {
         this.messageUser("Possible targets:");
         for(var i = 0; i < availableTargets.length; i++) {
             this.messageUser(availableTargets[i].promptString(), 3);
         }
         var target = this.getUserInput("Which " + ability.targetType + " would you like to target with " + ability.name + "?");
-        //TEST: console.log(availableTargets);
-        //TEST: console.log(target);
-        availableTargets = availableTargets.filter(item => item.name === target);
+        availableTargets = availableTargets.filter(item => item.name.toLowerCase() === target.toLowerCase());
         if(availableTargets.length === 0) {
             this.messageUser("Target not found. Please try again.");
             return this.promptForTarget(ability, availableTargets);
@@ -280,15 +157,6 @@ class UI {
         Ability: Returns the ability if the player has it and it is in the game; otherwise reprompts
     */
     promptForAbility(game, character, reprompt = 0) {
-        var availableAbilities = character.getAvailableAbilities(game);
-        if(availableAbilities === -1) {
-            return -1;
-        }
-        this.messageUser("The following abilities can be used on this turn:");
-        for( var i = 0; i < availableAbilities.length; i++) {
-            this.messageUser(availableAbilities[i].name, 3);
-        }
-        //TEST: UI.messageUser(player.conditions);
         switch(reprompt) {
             case 1:
                 this.messageUser("Your character doesn't know that move. Please try again.");
@@ -308,26 +176,33 @@ class UI {
             default:
                 break;
         }
+        var availableAbilities = character.getAvailableAbilities(game);
+        if(availableAbilities === -1) {
+            return -1;
+        }
+        this.messageUser("The following abilities can be used on this turn:");
+        for( var i = 0; i < availableAbilities.length; i++) {
+            this.messageUser(availableAbilities[i].name, 3);
+        }
         var abilityToUse = this.getUserInput("Which ability would you like to use?");
         const ability = game.getAbilityByName(abilityToUse);
         if(ability.modifier === 'wisdom' && !character.conditions.canMagicAttack) {
-            return this.promptForAbility(2, character);
+            return this.promptForAbility(game, character, 2);
         }
         else if(ability.modifier === 'strength' && !character.conditions.canPhysicalAttack) {
-            return this.promptForAbility(3, character);
+            return this.promptForAbility(game, character, 3);
         }
         else if(ability.targetType === 'ally' && !character.conditions.canGiveHealing) {
-            return this.promptForAbility(4, character);
+            return this.promptForAbility(game, character, 4);
         }
         else if(ability.targetType === 'enemy' && !character.conditions.canAttack) {
-            return this.promptForAbility(5, character);
+            return this.promptForAbility(game, character, 5);
         }
-        else if(ability !== -1 && character.abilities.includes(abilityToUse)) {
-            //TEST: console.log("Before: " + ability.toString());
+        else if(ability !== -1 && (character.abilities.includes(abilityToUse) || character.abilities.map(item => item.toLowerCase()).includes(abilityToUse))) {
             return ability;
         }
         else {
-            return this.promptForAbility(1, character);
+            return this.promptForAbility(game, character, 1);
         }
     }
 

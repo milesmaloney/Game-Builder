@@ -32,14 +32,13 @@ class Player extends Character {
     /*
     This function handles a player leveling up
     Parameters:
-        Game: The game the player is leveling up in (necessary for getUserInput)
+        None; Uses user input to get the stat increases requested
     Returns:
         None; mutates player stats based on the stat increases requested
     */
     levelUpPlayer(game) {
         var numStatIncreases = parseInt(this.level * .5);
         while(numStatIncreases > 0) {
-            //TEST: console.log(this.stats);
             var stat = UI.getUserInput("Which stat would you like to increase? You can increase " + numStatIncreases + " more stats.");
             var statIncrease = this.increaseStat(stat);
             while(statIncrease === -1) {
