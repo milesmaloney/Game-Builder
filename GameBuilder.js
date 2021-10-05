@@ -591,27 +591,35 @@ class Game {
         Ability: An ability randomly selected from the abilities available that fit the standards specified
     */
     selectAbility(abilities, isAOE, targetType) {
+        var specifiedAbilities = abilities;
         if(abilities.length === 0) {
             return -1;
         }
         if(isAOE !== 'unspecified') {
             if(isAOE) {
-                abilities = abilities.filter(item => item.numTargets > 1);
+                specifiedAbilities = abilities.filter(item => item.numTargets > 1);
             }
             else {
-                abilities = abilities.filter(item => item.numTargets === 1);
+                specifiedAbilities = abilities.filter(item => item.numTargets === 1);
             }
         }
         if(targetType === 'ally') {
-            abilities = abilities.filter(item => item.targetType === 'ally');
+            specifiedAbilities = abilities.filter(item => item.targetType === 'ally');
         }
         else if(targetType === 'enemy') {
-            abilities = abilities.filter(item => item.targetType === 'enemy');
+            specifiedAbilities = abilities.filter(item => item.targetType === 'enemy');
         }
         else if(targetType !== 'unspecified') {
             UI.messageUser("ERROR: Unrecognized target type found when selecting an ability.");
         }
-        return abilities[Calculator.calculateRandom(0, abilities.length - 1)];
+        var selectedAbility;
+        if(specifiedAbilities.length === 0) {
+            selectedAbility = abilities[Calculator.calculateRandom(0, abilities.length - 1)];
+        }
+        else {
+            selectedAbility = specifiedAbilities[Calculator.calculateRandom(0, specifiedAbilities.length - 1)];
+        }
+        return selectedAbility;
     }
 
     /*
@@ -789,7 +797,7 @@ class Game {
 
     getPlayerByName(name) {
         for(var i = 0; i < this.players.length; i++) {
-            if(this.players[i].name === name) {
+            if(this.players[i].name.toLowerCase() === name.toLowerCase()) {
                 return this.players[i];
             }
         }
@@ -798,7 +806,7 @@ class Game {
 
     getEnemyByName(name) {
         for(var i = 0; i < this.enemies.length; i++) {
-            if(this.enemies[i].name === name) {
+            if(this.enemies[i].name.toLowerCase() === name.toLowerCase()) {
                 return this.enemies[i];
             }
         }
@@ -808,7 +816,7 @@ class Game {
 
     getAllyByName(name) {
         for(var i = 0; i < this.allies.length; i++) {
-            if(this.allies[i].name === name) {
+            if(this.allies[i].name.toLowerCase() === name.toLowerCase()) {
                 return this.allies[i];
             }
         }
@@ -817,7 +825,7 @@ class Game {
 
     getCharacterClassByName(name) {
         for(var i = 0; i < this.characterClasses.length; i++) {
-            if(this.characterClasses[i].name === name) {
+            if(this.characterClasses[i].name.toLowerCase() === name.toLowerCase()) {
                 return this.characterClasses[i];
             }
         }
@@ -826,7 +834,7 @@ class Game {
 
     getAbilityByName(name) {
         for(var i = 0; i < this.abilities.length; i++) {
-            if(this.abilities[i].name === name) {
+            if(this.abilities[i].name.toLowerCase() === name.toLowerCase()) {
                 return this.abilities[i];
             }
         }
@@ -835,7 +843,7 @@ class Game {
 
     getStatusEffectByName(name) {
         for(var i = 0; i < this.statusEffects.length; i++) {
-            if(this.statusEffects[i].name === name) {
+            if(this.statusEffects[i].name.toLowerCase() === name.toLowerCase()) {
                 return this.statusEffects[i];
             }
         }
@@ -888,7 +896,7 @@ class Game {
                     return -1;
                 }
                 else {
-                    this.addEnemy("Skeleton " + (numSkeletons + 1), ['Punch', 'Minor Arcane Beam'], parseInt(stats.strength + 1), parseInt(stats.defense), parseInt(stats.wisdom), parseInt(stats.resilience), parseInt(stats.dexterity), parseInt(stats.evasion), parseInt(stats.maxHealth), parseInt(stats.maxHealth), parseInt(stats.luck), parseInt(stats.speed), []);
+                    this.addEnemy("Skeleton " + (numSkeletons + 1), ['Punch', 'Minor Arcane Beam'], parseInt((stats.strength + 0.5) * 1.5), parseInt((stats.defense + 0.5) * 1.5), parseInt(stats.wisdom + 0.5), parseInt(stats.resilience + 0.5), parseInt(stats.dexterity + 0.5), parseInt((stats.evasion + 0.5) * 0.5), parseInt(stats.maxHealth + 0.5), parseInt(stats.maxHealth + 0.5), parseInt(stats.luck + 0.5), parseInt((stats.speed + 0.5) * 0.5), []);
                 }
                 break;
             //Sorceror
@@ -898,7 +906,7 @@ class Game {
                     return -1;
                 }
                 else {
-                    this.addEnemy("Sorcerer " + (numSorcerers + 1), ['Minor Arcane Barrage', 'Minor Arcane Beam'], parseInt(stats.strength), parseInt(stats.defense), parseInt(stats.wisdom + 2), parseInt(stats.resilience), parseInt(stats.dexterity), parseInt(stats.evasion), parseInt(stats.maxHealth), parseInt(stats.maxHealth), parseInt(stats.luck), parseInt(stats.speed), []);
+                    this.addEnemy("Sorcerer " + (numSorcerers + 1), ['Minor Arcane Barrage', 'Minor Arcane Beam'], parseInt((stats.strength + 0.5) * 0.5), parseInt((stats.defense + 0.5) * 0.5), parseInt((stats.wisdom + 0.5) * 1.5), parseInt(stats.resilience + 0.5), parseInt(stats.dexterity + 0.5), parseInt(stats.evasion + 0.5), parseInt(stats.maxHealth + 0.5), parseInt(stats.maxHealth + 0.5), parseInt(stats.luck + 0.5), parseInt(stats.speed + 0.5), []);
                 }
                 break;
             //Cultist
@@ -908,7 +916,7 @@ class Game {
                     return -1;
                 }
                 else {
-                    this.addEnemy("Cultist " + (numCultists + 1), ['Minor Heal', 'Minor Group Heal'], parseInt(stats.strength), parseInt(stats.defense + 1), parseInt(stats.wisdom), parseInt(stats.resilience + 1), parseInt(stats.dexterity), parseInt(stats.evasion), parseInt(stats.maxHealth), parseInt(stats.maxHealth), parseInt(stats.luck), parseInt(stats.speed), []);
+                    this.addEnemy("Cultist " + (numCultists + 1), ['Minor Heal', 'Minor Group Heal'], parseInt((stats.strength + 0.5) * 0.5), parseInt((stats.defense + 0.5) * 1.5), parseInt(stats.wisdom + 0.5), parseInt((stats.resilience + 0.5) * 1.5), parseInt(stats.dexterity + 0.5), parseInt(stats.evasion + 0.5), parseInt(stats.maxHealth + 0.5), parseInt(stats.maxHealth + 0.5), parseInt(stats.luck + 0.5), parseInt(stats.speed + 0.5), []);
                 }
                 break;
         }

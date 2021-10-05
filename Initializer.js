@@ -93,7 +93,7 @@ class Initializer {
         None; creates character classes for the game
     */
     initializeCharacterClasses(game) {
-        game.addCharacterClass('Arcane Mage', 'The arcane mage is attuned to the arcane arts, and focuses its time and energy on studying the workings of magic.', ['Minor Arcane Beam', 'Minor Arcane Barrage'], 1, 5, 1, 3, 4, 2, 20, 1, 15, {
+        game.addCharacterClass('Arcane Mage', 'The arcane mage is attuned to the arcane arts, and focuses its time and energy on studying the workings of magic.', ['Minor Arcane Beam', 'Minor Arcane Barrage'], 1, 1, 5, 3, 4, 2, 20, 1, 15, {
             stats: {
                 strength: 0.25,
                 wisdom: 0.75,
@@ -108,7 +108,7 @@ class Initializer {
             abilities: [{level: 2, availableAbilities: ['Minor Heal']}, {level: 5, availableAbilities: ['Slice', 'Minor Group Heal']}]
         });
 
-        game.addCharacterClass('Warrior', 'The warrior was made for battle. The warrior spends its time challenging those who dare stand in their way.', ['Slice', 'Sweep'], 4, 1, 4, 2, 3, 1, 30, 5, 23, {
+        game.addCharacterClass('Warrior', 'The warrior was made for battle. The warrior spends its time challenging those who dare stand in their way.', ['Slice', 'Sweep'], 4, 4, 1, 2, 3, 1, 30, 5, 23, {
             stats: {
                 strength: 0.80,
                 wisdom: 0.2,
@@ -123,7 +123,7 @@ class Initializer {
             abilities: [{level: 2, availableAbilities: 'Punch'}, {level: 5, availableAbilities: ['Minor Arcane Beam', 'Minor Group Heal']}]
         });
 
-        game.addCharacterClass('Warden', 'The warden seeks to protect life wherever they can. They would sooner heal an ally than attack a foe.', ['Minor Heal', 'Minor Group Heal'], 1, 3, 4, 4, 2, 2, 15, 4, 14, {
+        game.addCharacterClass('Warden', 'The warden seeks to protect life wherever they can. They would sooner heal an ally than attack a foe.', ['Minor Heal', 'Minor Group Heal'], 1, 4, 3, 4, 2, 2, 15, 4, 14, {
             stats: {
                 strength: 0.10,
                 wisdom: 0.75,
@@ -261,6 +261,9 @@ class Initializer {
         var numPlayers = UI.checkForUserApproval("How many players would like to play?", "Are you sure the number of players that would like to play is ", validatePlayerNumber);
         //Initialize Players
         for(var i = 0; i < numPlayers; i++) {
+            if(numPlayers > 1) {
+                UI.messageUser("Player " + (i + 1) + ":");
+            }
             this.initializePlayer(game);
         }
     }
@@ -275,7 +278,7 @@ class Initializer {
     initializePlayer(game) {
         var character = UI.promptforNewPlayer(game);
         var charClass = game.getCharacterClassByName(character.class);
-        game.addPlayer(character.name, charClass.name, charClass.abilities, charClass.baseStats.strength, charClass.baseStats.wisdom, charClass.baseStats.defense, charClass.baseStats.resilience, charClass.baseStats.dexterity, charClass.baseStats.evasion, charClass.baseStats.maxHealth, charClass.baseStats.maxHealth, charClass.baseStats.luck, charClass.baseStats.speed, []);
+        game.addPlayer(character.name, charClass.name, charClass.abilities, charClass.baseStats.strength, charClass.baseStats.defense, charClass.baseStats.wisdom, charClass.baseStats.resilience, charClass.baseStats.dexterity, charClass.baseStats.evasion, charClass.baseStats.maxHealth, charClass.baseStats.maxHealth, charClass.baseStats.luck, charClass.baseStats.speed, []);
         UI.messageUser(character.name + " has joined the battle!");
     }
 

@@ -139,9 +139,11 @@ class Calculator {
             damage = ability.multiplier * (character.stats.wisdom / enemy.stats.resilience) * character.stats.wisdom;
         }
         else {
+            console.log("ERROR: Ability modifier unrecognized while calculating damage.");
             return 0;
         }
-        damage = parseInt(this.calculateCrit(character, damage));
+        //Calculates whether or not the attack crits and rounds the damage
+        damage = parseInt(this.calculateCrit(character, damage) + 0.5);
         return damage;
     }
     
