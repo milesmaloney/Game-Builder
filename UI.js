@@ -59,7 +59,7 @@ class UI {
                 return 0;
             }
         }
-        var className = this.checkForUserApproval("What class would you like your character to be?", "Are you sure you would like to be a ", classValidityCheck);
+        var className = this.checkForUserApproval("What class would you like your character to be?", "Are you sure you would like the class ", classValidityCheck);
         return {name: characterName, class: className};
     }
 
