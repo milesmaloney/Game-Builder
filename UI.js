@@ -90,7 +90,14 @@ class UI {
         return input;
     }
 
-
+    /*
+    This function prompts the user for the target of their ability
+    Parameters:
+        Ability: The ability being used
+        Available Targets: The available targets for the ability
+    Returns:
+        Character: The object that is selected to be the receiver of the ability
+    */
     promptForTarget(ability, availableTargets) {
         this.messageUser("Possible targets:");
         for(var i = 0; i < availableTargets.length; i++) {

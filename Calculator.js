@@ -39,7 +39,6 @@ class Calculator {
             Largest Percent Health Missing: The largest % missing health value among the array
             Largest Percent Health Missing Object: The object that carries the largest % missing health value
     */
-
     calculateHealthStates(array) {
         var healthStates = { averageMissingHealth: 0, largestDeviationValue: 0, largestPercentHealthMissing: 0, largestPercentHealthMissingObject: undefined};
         //Checks for the largest % of missing health

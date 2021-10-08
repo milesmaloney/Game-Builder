@@ -87,7 +87,7 @@ class Character {
     }
 
 
-        /*
+    /*
     This function lists the available abilities for a character who is taking their turn
     Parameters:
         Game: The game that the character is being played in

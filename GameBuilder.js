@@ -49,10 +49,7 @@ class Game {
     }
 
 
-
-
-    
-        /*
+    /*
     This function informs the user whether they win or lose when the game ends
     Parameters:
         winOrLose: A boolean value (0 or 1) denoting whether all players died or all enemies died
@@ -887,6 +884,14 @@ class Game {
         this.enemies.push(enemy);
     }
 
+    /*
+    This function creates an enemy of a certain type based on the given parameter type
+    Parameters:
+        Stats: The current base stat block for enemies
+        Type: The type(int) of the new enemy
+    Returns:
+        None; Adds an enemy of the given type to the game using the given stats as a base
+    */
     addEnemyByType(stats, type) {
         switch(type) {
             //Skeleton
@@ -899,7 +904,7 @@ class Game {
                     this.addEnemy("Skeleton " + (numSkeletons + 1), ['Punch', 'Minor Arcane Beam'], parseInt((stats.strength + 0.5) * 1.5), parseInt((stats.defense + 0.5) * 1.5), parseInt(stats.wisdom + 0.5), parseInt(stats.resilience + 0.5), parseInt(stats.dexterity + 0.5), parseInt((stats.evasion + 0.5) * 0.5), parseInt(stats.maxHealth + 0.5), parseInt(stats.maxHealth + 0.5), parseInt(stats.luck + 0.5), parseInt((stats.speed + 0.5) * 0.5), []);
                 }
                 break;
-            //Sorceror
+            //Sorcerer
             case 1:
                 var numSorcerers = this.enemies.filter(item => item.name.includes('Sorcerer')).length;
                 if(numSorcerers >= 4 || this.enemies.length >= 12) {
