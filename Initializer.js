@@ -153,6 +153,13 @@ class Initializer {
         }
     }
 
+    /*
+    This function creates an enemy from scratch using the stats of the current player party (Allies and enemies)
+    Parameters:
+        Game: The game we are creating an enemy in
+    Returns:
+        None; Creates an enemy and adds it to the game's enemies array
+    */
     initializeEnemy(game) {
         var playerParty = game.players.concat(game.allies);
         var statSummation = {strength: 0, wisdom: 0, defense: 0, resilience: 0, dexterity: 0, evasion: 0, luck: 0, speed: 0, maxHealth: 0};
@@ -180,19 +187,27 @@ class Initializer {
         var numRandomIncreases = Calculator.calculateRandom(0, 9);
         for(var i = 0; i < Math.max(numRandomDecreases, numRandomDecreases); i++) {
             if(numRandomIncreases !== 0) {
-                this.randomlyChangeStatFromStatSummation(statSummation, 1.1);
+                this.randomlyChangeStatFromStatSummation(statSummation, 110);
             }
             if(numRandomDecreases !== 0) {
-                this.randomlyChangeStatFromStatSummation(statSummation, 0.9);
+                this.randomlyChangeStatFromStatSummation(statSummation, 90);
             }
         }
         game.addEnemyByType(statSummation, Calculator.calculateRandom(0, 2));
     }
 
 
-
+    /*
+    This function takes the stat summation and applies a random stat change to it
+    Parameters:
+        Object: The stat summation we are attempting to change
+        Change: The amount we are attempting to change it by (%)
+    Returns:
+        None: Mutates the stat summation using the given change
+    */
     randomlyChangeStatFromStatSummation(object, change) {
         var randomStat = Calculator.calculateRandom(1, 9);
+        change /= 100;
         switch(randomStat) {
             case 1:
                 object.strength *= change;

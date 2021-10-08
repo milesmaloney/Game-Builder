@@ -29,6 +29,13 @@ class CharacterClass {
         this.classLevelUps = classLevelUps;
     }
 
+    /*
+    This function gives a more readable string for the user to view the attributes of a character class
+    Parameters:
+        None; This function uses attributes to create a more readable string
+    Returns:
+        String: The string containing the character class's attributes in a friendly layout
+    */
     promptString() {
         var string = this.name + ":\n\t\t\t\t" + this.description + "\n\t\t\t\tStarting Abilities:";
         for(var i = 0; i < this.abilities.length; i++) {
